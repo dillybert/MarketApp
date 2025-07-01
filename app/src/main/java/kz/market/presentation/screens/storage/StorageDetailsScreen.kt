@@ -1,13 +1,18 @@
 package kz.market.presentation.screens.storage
 
 import android.Manifest
+import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,7 +25,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -28,6 +32,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -37,14 +42,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
@@ -54,7 +57,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kz.market.R
 import kz.market.domain.models.ProductDetailsArgs
@@ -82,7 +88,30 @@ fun StorageDetailsScreen(
         hasPermission = granted
     }
 
+    val showPermissionDeniedDialog =
+        !hasPermission &&
+                !ActivityCompat.shouldShowRequestPermissionRationale(
+                    context as Activity,
+                    permission
+                )
+
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                hasPermission = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     LaunchedEffect(Unit) {
+        hasPermission = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+
         if (!hasPermission) {
             launcher.launch(permission)
         }
@@ -123,7 +152,8 @@ fun StorageDetailsScreen(
         LazyColumn(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             item {
                 Row(
@@ -134,18 +164,16 @@ fun StorageDetailsScreen(
                 ) {
                     Icon(
                         modifier = Modifier
-                            .padding(top = 3.dp),
+                            .padding(top = 3.dp, end = 10.dp),
                         painter = painterResource(R.drawable.ic_info),
                         contentDescription = "Info",
                         tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                     )
 
-                    Spacer(modifier = Modifier.width(10.dp))
-
                     Text(
                         text = """ Перед обновлением данных товара пожалуйста, убедитесь, что:
     • Название товара не пустое
-    • Штрихкод введён правильно
+    • Штрих-код введён правильно
     • Цена больше 0 (в тенге)
     • Количество больше 0
                     """.trimIndent(),
@@ -157,10 +185,9 @@ fun StorageDetailsScreen(
             }
 
             item {
-                Spacer(modifier = Modifier.height(20.dp))
-            }
+                val selectedLabel = options.entries.find { it.value == inputState.value.unit }?.key
+                    ?: "Выберите единицу измерения"
 
-            item {
                 OutlinedTextField(
                     isError = showInputError,
                     singleLine = true,
@@ -181,7 +208,22 @@ fun StorageDetailsScreen(
                     trailingIcon = {
                         IconButton(
                             onClick = {
-                                showBottomSheet = true
+                                if (!hasPermission) {
+                                    if (showPermissionDeniedDialog) {
+                                        Toast.makeText(context, "Пожалуйста, предоставьте разрешение на камеру", Toast.LENGTH_SHORT).show()
+
+                                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                            data = Uri.fromParts("package", context.packageName, null)
+                                        }
+
+                                        context.startActivity(intent)
+                                    } else {
+                                        launcher.launch(permission)
+                                    }
+
+                                } else {
+                                    showBottomSheet = true
+                                }
                             }
                         ) {
                             Icon(
@@ -192,11 +234,8 @@ fun StorageDetailsScreen(
                     },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
-            }
 
-            item { Spacer(modifier = Modifier.height(10.dp)) }
 
-            item {
                 OutlinedTextField(
                     isError = showInputError,
                     singleLine = true,
@@ -215,11 +254,8 @@ fun StorageDetailsScreen(
                     onValueChange = { inputState.value = inputState.value.copy(name = it) },
                     label = { Text("Название товара") }
                 )
-            }
 
-            item { Spacer(modifier = Modifier.height(10.dp)) }
 
-            item {
                 OutlinedTextField(
                     isError = showInputError,
                     singleLine = true,
@@ -252,11 +288,8 @@ fun StorageDetailsScreen(
                     label = { Text("Реализационная цена товара") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
-            }
 
-            item { Spacer(modifier = Modifier.height(10.dp)) }
 
-            item {
                 OutlinedTextField(
                     isError = showInputError,
                     singleLine = true,
@@ -289,13 +322,7 @@ fun StorageDetailsScreen(
                     label = { Text("Себестоимость товара") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
-            }
 
-            item { Spacer(modifier = Modifier.height(10.dp)) }
-
-            item {
-                val selectedLabel = options.entries.find { it.value == inputState.value.unit }?.key
-                    ?: "Выберите единицу измерения"
 
 
                 ExposedDropdownMenuBox(
@@ -313,7 +340,7 @@ fun StorageDetailsScreen(
                             ExposedDropdownMenuDefaults.TrailingIcon(showDropDown)
                         },
                         modifier = Modifier
-                            .menuAnchor()
+                            .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
                             .fillMaxWidth(),
                     )
 
@@ -332,11 +359,9 @@ fun StorageDetailsScreen(
                         }
                     }
                 }
-            }
 
-            item { Spacer(modifier = Modifier.height(30.dp)) }
+                Spacer(modifier = Modifier.height(15.dp))
 
-            item {
                 OutlinedTextField(
                     isError = showInputError,
                     singleLine = true,
@@ -362,8 +387,6 @@ fun StorageDetailsScreen(
                 )
             }
 
-            item { Spacer(modifier = Modifier.height(20.dp)) }
-
             item {
                 OutlinedButton(
                     modifier = Modifier
@@ -386,8 +409,6 @@ fun StorageDetailsScreen(
                     )
                 }
             }
-
-            item { Spacer(modifier = Modifier.height(10.dp)) }
 
             item {
                 OutlinedButton(
