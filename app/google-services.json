@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "129103825248",
+    "project_id": "market-7edc6",
+    "storage_bucket": "market-7edc6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:129103825248:android:be16582b890ded6951f605",
+        "android_client_info": {
+          "package_name": "kz.market"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDXHvClI9TkkHn3VcYc1vRCMaxD6WVgtOA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
