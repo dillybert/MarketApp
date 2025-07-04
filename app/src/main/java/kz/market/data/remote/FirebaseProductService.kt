@@ -34,14 +34,14 @@ class FirebaseProductService @Inject constructor(
         collectionName: String,
         documentId: String,
         clazz: Class<T>
-    ): T? = try {
+    ): Result<T?> = try {
         val snapshot = firestore.collection(collectionName)
             .document(documentId)
             .get()
             .await()
-        snapshot.toObject(clazz)
+        Result.success(snapshot.toObject(clazz))
     } catch (e: Exception) {
-        null
+        Result.failure(e)
     }
 
     suspend fun <T : Any> putTo(

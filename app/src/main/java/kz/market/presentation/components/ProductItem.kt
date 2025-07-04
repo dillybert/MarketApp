@@ -36,7 +36,7 @@ fun ProductItem(
     onClick: (product: Product) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val date = Date(product.createdAt)
+    val date = product.updatedAt.toDate()
     val formattedDate = SimpleDateFormat(
         "dd/MM/yy",
         Locale.getDefault()

@@ -1,4 +1,4 @@
-package kz.market.presentation.components
+package kz.market.presentation.components.camera
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas

@@ -7,5 +7,5 @@ import javax.inject.Inject
 class GetProductByBarcodeUseCase @Inject constructor(
     private val productRepository: ProductRepository
 ) {
-    suspend operator fun invoke(barcode: String): Product? = productRepository.getProductByBarcode(barcode)
+    suspend operator fun invoke(barcode: String): Result<Product?> = productRepository.getProductByBarcode(barcode)
 }

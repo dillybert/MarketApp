@@ -1,10 +1,5 @@
 package kz.market.presentation.screens.storage
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,77 +11,45 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import kz.market.R
 import kz.market.domain.models.Product
-import kz.market.presentation.components.CameraViewfinderOverlay
 import kz.market.presentation.components.ProductItem
-import kz.market.presentation.components.camera.CameraPreview
+import kz.market.presentation.components.camera.CameraScannerSheet
 import kz.market.utils.UIGetState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StorageScreenContent(
-    state: UIGetState<List<Product>>,
-    searchText: String,
-    onDetailsClick: (barcode: String, name: String, price: Double, ownPrice: Double, quantity: Int, unit: String) -> Unit,
+    productsListState: UIGetState<List<Product>>,
+    searchTextState: String,
+    onProductDetailsClick: (barcode: String) -> Unit,
+    onProductAddButtonClick: () -> Unit,
     onSearchTextChanged: (String) -> Unit,
 ) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val permission = Manifest.permission.CAMERA
-    var hasPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
-        )
-    }
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        hasPermission = granted
-    }
-
-    LaunchedEffect(Unit) {
-        if (!hasPermission) {
-            launcher.launch(permission)
-        }
-    }
-
-    val bottomSheetState = rememberModalBottomSheetState()
-    var showBottomSheet by remember { mutableStateOf(false) }
+    var showCameraScanner by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -96,7 +59,7 @@ fun StorageScreenContent(
                 },
                 actions = {
                     IconButton(
-                        onClick = {}
+                        onClick = onProductAddButtonClick,
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.ic_add),
@@ -117,7 +80,7 @@ fun StorageScreenContent(
         }
     ) { innerPadding ->
 
-        when (state) {
+        when (productsListState) {
             is UIGetState.Empty -> {
                 Box(
                     modifier = Modifier
@@ -143,7 +106,7 @@ fun StorageScreenContent(
                         Spacer(modifier = Modifier.height(20.dp))
 
                         Text(
-                            text = "Склад пустой",
+                            text = "На складе пока нет товаров",
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.secondary,
                             style = MaterialTheme.typography.titleLarge
@@ -186,7 +149,7 @@ fun StorageScreenContent(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = state.message,
+                            text = productsListState.message,
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.bodyMedium,
                         )
@@ -206,7 +169,7 @@ fun StorageScreenContent(
             }
 
             is UIGetState.Success<List<Product>> -> {
-                val productsList = state.data
+                val productsList = productsListState.data
 
                 LazyColumn(
                     modifier = Modifier
@@ -219,7 +182,7 @@ fun StorageScreenContent(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(top = 10.dp),
-                            value = searchText,
+                            value = searchTextState,
                             onValueChange = { newText ->
                                 onSearchTextChanged(newText)
                             },
@@ -242,7 +205,7 @@ fun StorageScreenContent(
                             trailingIcon = {
                                 IconButton(
                                     onClick = {
-                                        showBottomSheet = true
+                                        showCameraScanner = true
                                     },
                                 ) {
                                     Icon(
@@ -277,13 +240,8 @@ fun StorageScreenContent(
                                 ProductItem(
                                     product = item,
                                     onClick = { product ->
-                                        onDetailsClick(
+                                        onProductDetailsClick(
                                             product.barcode,
-                                            product.name,
-                                            product.price,
-                                            product.ownPrice,
-                                            product.quantity,
-                                            product.unit
                                         )
                                     }
                                 )
@@ -294,49 +252,30 @@ fun StorageScreenContent(
             }
         }
 
-        if (showBottomSheet) {
-            ModalBottomSheet(
-                onDismissRequest = { showBottomSheet = false },
-                sheetState = bottomSheetState,
-                shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp),
-                contentColor = Color.Transparent,
-                containerColor = Color.Transparent,
-                dragHandle = {}
-            ) {
-                Box(
-                    modifier = Modifier
-                        .height(400.dp)
-                ) {
-                    CameraPreview(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clipToBounds(),
-                        context = context,
-                        lifecycleOwner = lifecycleOwner,
-                        onBarcodeScanned = { barcode ->
-                            onSearchTextChanged(barcode)
-                            showBottomSheet = false
-                        }
-                    )
-
-                    CameraViewfinderOverlay(
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+        CameraScannerSheet(
+            visible = showCameraScanner,
+            onDismiss = {
+                showCameraScanner = false
+            },
+            onScan = { barcode ->
+                showCameraScanner = false
+                onSearchTextChanged(barcode)
             }
-        }
+        )
     }
 }
 
 @Composable
 fun StorageScreen(
     viewModel: StorageViewModel = hiltViewModel(),
-    onDetailsClick: (barcode: String, name: String, price: Double, ownPrice: Double, quantity: Int, unit: String) -> Unit
+    onProductDetailsClick: (barcode: String) -> Unit,
+    onProductAddButtonClick: () -> Unit
 ) {
     StorageScreenContent(
-        state = viewModel.productsState.collectAsState().value,
-        searchText = viewModel.searchQueryForProducts.collectAsState().value,
-        onDetailsClick = onDetailsClick,
+        productsListState = viewModel.filteredProductsState.collectAsState().value,
+        searchTextState = viewModel.searchQueryForProducts.collectAsState().value,
+        onProductDetailsClick = onProductDetailsClick,
+        onProductAddButtonClick = onProductAddButtonClick,
         onSearchTextChanged = viewModel::updateSearchQuery
     )
 }
@@ -349,7 +288,7 @@ fun StorageScreen(
 @Composable
 private fun StorageScreenPreview() {
     StorageScreenContent(
-        state = UIGetState.Success(data = listOf(
+        productsListState = UIGetState.Success(data = listOf(
             Product(barcode = "5555555555555", name = "Test", price = 21.0, quantity = 10),
             Product(barcode = "5555555555555", name = "Test", price = 21.0, quantity = 10),
             Product(barcode = "5555555555555", name = "Test", price = 21.0, quantity = 10),
@@ -359,10 +298,11 @@ private fun StorageScreenPreview() {
             Product(barcode = "5555555555555", name = "Test", price = 21.0, quantity = 10),
             Product(barcode = "5555555555555", name = "Test", price = 21.0, quantity = 10),
         )),
-        searchText = "",
-        onDetailsClick = { barcode, name, price, ownPrice, quantity, unit ->
+        searchTextState = "",
+        onProductDetailsClick = { barcode ->
 
         },
+        onProductAddButtonClick = {},
         onSearchTextChanged = {}
     )
 }

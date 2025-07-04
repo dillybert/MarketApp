@@ -3,7 +3,6 @@ package kz.market.presentation.navigation
 import androidx.annotation.Keep
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraphBuilder
@@ -13,13 +12,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navigation
 import androidx.navigation.toRoute
 import kotlinx.serialization.Serializable
-import kz.market.domain.models.ProductDetailsArgs
 import kz.market.presentation.screens.dashboard.DashboardDetailsScreen
 import kz.market.presentation.screens.dashboard.DashboardScreen
 import kz.market.presentation.screens.product.ProductSalesDetailsScreen
 import kz.market.presentation.screens.product.ProductSalesScreen
 import kz.market.presentation.screens.reports.ReportsDetailsScreen
 import kz.market.presentation.screens.reports.ReportsScreen
+import kz.market.presentation.screens.storage.StorageAddProductScreen
+import kz.market.presentation.screens.storage.StorageDetailsContent
 import kz.market.presentation.screens.storage.StorageDetailsScreen
 import kz.market.presentation.screens.storage.StorageScreen
 
@@ -27,6 +27,7 @@ interface ApplicationDestination
 
 @Serializable @Keep object MainRoot : ApplicationDestination
 @Serializable @Keep object DetailsRoot : ApplicationDestination
+@Serializable @Keep object InnerRoot : ApplicationDestination
 
 @Serializable @Keep object DashboardMain : ApplicationDestination
 @Serializable @Keep object DashboardDetails : ApplicationDestination
@@ -38,14 +39,8 @@ interface ApplicationDestination
 @Serializable @Keep object ReportsDetails : ApplicationDestination
 
 @Serializable @Keep object StorageMain : ApplicationDestination
-@Serializable @Keep data class StorageDetails(
-    val barcode: String,
-    val name: String,
-    val price: Double,
-    val ownPrice: Double,
-    val quantity: Int,
-    val unit: String
-) : ApplicationDestination
+@Serializable @Keep data class StorageDetails(val barcode: String, ) : ApplicationDestination
+@Serializable @Keep object StorageAddProduct : ApplicationDestination
 
 
 @Composable
@@ -87,18 +82,22 @@ fun ApplicationNavGraph(
         }
         composable<StorageMain> {
             StorageScreen(
-                onDetailsClick = { barcode, name, price, ownPrice, quantity, unit ->
-                    navController.navigate(StorageDetails(barcode, name, price, ownPrice, quantity, unit))
+                onProductDetailsClick = { barcode ->
+                    navController.navigate(StorageDetails(barcode))
+                },
+                onProductAddButtonClick = {
+                    navController.navigate(StorageAddProduct)
                 }
             )
         }
 
+        detailsNavGraph()
         innerNavGraph()
     }
 }
 
 
-fun NavGraphBuilder.innerNavGraph() {
+fun NavGraphBuilder.detailsNavGraph() {
     navigation<DetailsRoot>(
         startDestination = DashboardDetails
     ) {
@@ -114,18 +113,18 @@ fun NavGraphBuilder.innerNavGraph() {
         }
         composable<StorageDetails> { entry ->
             val storageDetails = entry.toRoute<StorageDetails>()
-            val productDetailsArgs = ProductDetailsArgs(
-                barcode = storageDetails.barcode,
-                name = storageDetails.name,
-                price = storageDetails.price,
-                ownPrice = storageDetails.ownPrice,
-                quantity = storageDetails.quantity,
-                unit = storageDetails.unit
-            )
 
-            StorageDetailsScreen(
-                args = productDetailsArgs
-            )
+            StorageDetailsScreen(barcode = storageDetails.barcode)
+        }
+    }
+}
+
+fun NavGraphBuilder.innerNavGraph() {
+    navigation<InnerRoot>(
+        startDestination = StorageAddProduct
+    ) {
+        composable<StorageAddProduct> {
+            StorageAddProductScreen()
         }
     }
 }

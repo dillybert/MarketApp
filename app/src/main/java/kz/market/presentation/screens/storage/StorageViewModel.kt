@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -32,10 +31,13 @@ class StorageViewModel @Inject constructor(
     private val deleteProductByBarcodeUseCase: DeleteProductByBarcodeUseCase
 ) : ViewModel() {
 
-    private val _productsState = MutableStateFlow<UIGetState<List<Product>>>(UIGetState.Loading)
     private val _searchQueryForProducts = MutableStateFlow("")
     val searchQueryForProducts: StateFlow<String> = _searchQueryForProducts.asStateFlow()
-    val productsState: StateFlow<UIGetState<List<Product>>> = combine(
+
+    private val _productsState = MutableStateFlow<UIGetState<List<Product>>>(UIGetState.Loading)
+    val productsState: StateFlow<UIGetState<List<Product>>> = _productsState.asStateFlow()
+
+    val filteredProductsState: StateFlow<UIGetState<List<Product>>> = combine(
         _productsState,
         _searchQueryForProducts
     ) { state, queries ->
@@ -43,7 +45,7 @@ class StorageViewModel @Inject constructor(
             is UIGetState.Success -> {
                 val filteredProducts = state.data.filter { product ->
                     product.name.contains(queries, ignoreCase = true) ||
-                    product.barcode.contains(queries)
+                            product.barcode.contains(queries)
                 }
                 UIGetState.Success(filteredProducts)
             }
@@ -115,7 +117,10 @@ class StorageViewModel @Inject constructor(
 
             val result = deleteProductByBarcodeUseCase(barcode)
             _deleteProductResult.value = when {
-                result.isSuccess -> UISetState.Success
+                result.isSuccess -> {
+                    _productState.value = UIGetState.Empty
+                    UISetState.Success
+                }
                 else -> UISetState.Error(result.exceptionOrNull()?.message ?: "Unknown error")
             }
         }
@@ -125,10 +130,18 @@ class StorageViewModel @Inject constructor(
         viewModelScope.launch {
             _productState.value = UIGetState.Loading
 
-            val product = getProductByBarcodeUseCase(barcode)
+            val result = getProductByBarcodeUseCase(barcode)
             _productState.value = when {
-                product != null -> UIGetState.Success(product)
-                else -> UIGetState.Error("Product not found")
+                result.isSuccess -> {
+                    val product = result.getOrNull()
+
+                    if (product != null) {
+                        UIGetState.Success(product)
+                    } else {
+                        UIGetState.Empty
+                    }
+                }
+                else -> UIGetState.Error(result.exceptionOrNull()?.message ?: "Unknown error")
             }
         }
     }
@@ -137,6 +150,5 @@ class StorageViewModel @Inject constructor(
         _addProductResult.value = UISetState.Idle
         _updateProductResult.value = UISetState.Idle
         _deleteProductResult.value = UISetState.Idle
-        _productState.value = UIGetState.Loading
     }
 }

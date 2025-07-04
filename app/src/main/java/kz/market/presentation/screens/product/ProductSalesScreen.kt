@@ -27,7 +27,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kz.market.R
-import kz.market.presentation.components.CameraViewfinderOverlay
+import kz.market.presentation.components.camera.CameraViewfinderOverlay
 import kz.market.presentation.components.camera.CameraPreview
 
 @OptIn(ExperimentalMaterial3Api::class)

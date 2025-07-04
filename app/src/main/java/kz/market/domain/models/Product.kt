@@ -1,6 +1,8 @@
 package kz.market.domain.models
 
 import androidx.annotation.Keep
+import com.google.firebase.Timestamp
+import java.text.SimpleDateFormat
 import java.util.Locale
 
 @Keep
@@ -11,8 +13,8 @@ data class Product(
     val ownPrice: Double = 0.0,
     val quantity: Int = 0,
     val unit: String = "",
-    val createdAt: Long = System.currentTimeMillis(),
-    var updatedAt: Long = System.currentTimeMillis()
+    val createdAt: Timestamp = Timestamp.now(),
+    var updatedAt: Timestamp = Timestamp.now()
 ) {
     val formattedPrice: String
         get() = String.format(
@@ -20,6 +22,18 @@ data class Product(
             format = "%,.0f",
             price
         )
+
+    val formattedCreatedAtDate: String
+        get() = SimpleDateFormat(
+            "dd.MM.yyyy HH:mm",
+            Locale.getDefault()
+        ).format(createdAt.toDate())
+
+    val formattedUpdatedAtDate: String
+        get() = SimpleDateFormat(
+            "dd.MM.yyyy HH:mm",
+            Locale.getDefault()
+        ).format(updatedAt.toDate())
 
     fun isFullyEmpty(): Boolean = barcode.isEmpty() && name.isEmpty() && price == 0.0 && ownPrice == 0.0 && quantity == 0 && unit.isEmpty()
 
@@ -36,24 +50,15 @@ data class Product(
 
 
 @Keep
-data class ProductDetailsArgs(
-    val barcode: String,
-    val name: String,
-    val price: Double,
-    val ownPrice: Double,
-    val quantity: Int,
-    val unit: String
-)
-
-
-@Keep
 data class ProductInputState(
     val barcode: String = "",
     val name: String = "",
     val price: String = "",
     val ownPrice: String = "",
     val quantity: String = "",
-    val unit: String = ""
+    val unit: String = "",
+    val createdAt: String = "",
+    var updatedAt: String = ""
 ) {
     fun isValid(): Boolean =
             barcode.isNotBlank() &&
@@ -61,7 +66,9 @@ data class ProductInputState(
             price.toDoubleOrNull()?.let { it > 0.0 } == true &&
             ownPrice.toDoubleOrNull()?.let { it > 0.0 } == true &&
             quantity.toIntOrNull()?.let { it > 0 } == true &&
-            unit.isNotBlank()
+            unit.isNotBlank() &&
+            createdAt.isNotBlank() &&
+            updatedAt.isNotBlank()
 
     fun isNotValid(): Boolean = !isValid()
 

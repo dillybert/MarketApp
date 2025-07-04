@@ -25,7 +25,7 @@ class ProductRepositoryImpl @Inject constructor(
         data = product
     )
 
-    override suspend fun getProductByBarcode(barcode: String): Product? = service.getById(
+    override suspend fun getProductByBarcode(barcode: String): Result<Product?> = service.getById(
         collectionName = "products",
         documentId = barcode,
         clazz = Product::class.java
