@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -89,8 +91,7 @@ fun StorageScreenContent(
                 ) {
                     Column(
                         modifier = Modifier
-                            .fillMaxWidth(.5f)
-                            .aspectRatio(1f),
+                            .fillMaxWidth(.5f),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
@@ -103,14 +104,29 @@ fun StorageScreenContent(
                             contentDescription = "Storage is empty",
                         )
 
-                        Spacer(modifier = Modifier.height(20.dp))
-
                         Text(
+                            modifier = Modifier
+                                .padding(vertical = 20.dp),
                             text = "На складе пока нет товаров",
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.secondary,
                             style = MaterialTheme.typography.titleLarge
                         )
+
+                        Button(
+                            onClick = onProductAddButtonClick
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_add),
+                                contentDescription = "Add New Products"
+                            )
+
+                            Text(
+                                modifier = Modifier
+                                    .padding(start = 8.dp),
+                                text = "Добавить товар"
+                            )
+                        }
                     }
                 }
             }
@@ -175,7 +191,7 @@ fun StorageScreenContent(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(innerPadding)
-                        .padding(horizontal = 16.dp)
+                        .padding(horizontal = 14.dp)
                 ) {
                     item {
                         OutlinedTextField(
@@ -196,8 +212,7 @@ fun StorageScreenContent(
                             singleLine = true,
                             placeholder = {
                                 Text(
-                                    text = "Поиск по названию или штрих-коду товара",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    text = "Поиск",
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = .5f)
                                 )
@@ -288,15 +303,8 @@ fun StorageScreen(
 @Composable
 private fun StorageScreenPreview() {
     StorageScreenContent(
-        productsListState = UIGetState.Success(data = listOf(
-            Product(barcode = "5555555555555", name = "Test", price = 21.0, quantity = 10),
-            Product(barcode = "5555555555555", name = "Test", price = 21.0, quantity = 10),
-            Product(barcode = "5555555555555", name = "Test", price = 21.0, quantity = 10),
-            Product(barcode = "5555555555555", name = "Test", price = 21.0, quantity = 10),
-            Product(barcode = "5555555555555", name = "Test", price = 21.0, quantity = 10),
-            Product(barcode = "5555555555555", name = "Test", price = 21.0, quantity = 10),
-            Product(barcode = "5555555555555", name = "Test", price = 21.0, quantity = 10),
-            Product(barcode = "5555555555555", name = "Test", price = 21.0, quantity = 10),
+        productsListState = UIGetState.Success(listOf(
+            Product()
         )),
         searchTextState = "",
         onProductDetailsClick = { barcode ->

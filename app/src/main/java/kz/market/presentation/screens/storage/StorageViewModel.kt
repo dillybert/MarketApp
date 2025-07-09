@@ -35,7 +35,6 @@ class StorageViewModel @Inject constructor(
     val searchQueryForProducts: StateFlow<String> = _searchQueryForProducts.asStateFlow()
 
     private val _productsState = MutableStateFlow<UIGetState<List<Product>>>(UIGetState.Loading)
-    val productsState: StateFlow<UIGetState<List<Product>>> = _productsState.asStateFlow()
 
     val filteredProductsState: StateFlow<UIGetState<List<Product>>> = combine(
         _productsState,

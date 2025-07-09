@@ -39,7 +39,7 @@ interface ApplicationDestination
 @Serializable @Keep object ReportsDetails : ApplicationDestination
 
 @Serializable @Keep object StorageMain : ApplicationDestination
-@Serializable @Keep data class StorageDetails(val barcode: String, ) : ApplicationDestination
+@Serializable @Keep data class StorageDetails(val barcode: String) : ApplicationDestination
 @Serializable @Keep object StorageAddProduct : ApplicationDestination
 
 
@@ -91,13 +91,15 @@ fun ApplicationNavGraph(
             )
         }
 
-        detailsNavGraph()
-        innerNavGraph()
+        detailsNavGraph(navController)
+        innerNavGraph(navController)
     }
 }
 
 
-fun NavGraphBuilder.detailsNavGraph() {
+fun NavGraphBuilder.detailsNavGraph(
+    navController: NavHostController
+) {
     navigation<DetailsRoot>(
         startDestination = DashboardDetails
     ) {
@@ -119,12 +121,18 @@ fun NavGraphBuilder.detailsNavGraph() {
     }
 }
 
-fun NavGraphBuilder.innerNavGraph() {
+fun NavGraphBuilder.innerNavGraph(
+    navController: NavHostController
+) {
     navigation<InnerRoot>(
         startDestination = StorageAddProduct
     ) {
         composable<StorageAddProduct> {
-            StorageAddProductScreen()
+            StorageAddProductScreen(
+                onDetailsClick = { barcode ->
+                    navController.navigate(StorageDetails(barcode = barcode))
+                }
+            )
         }
     }
 }

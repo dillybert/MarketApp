@@ -1,63 +1,369 @@
 package kz.market.presentation.screens.storage
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.google.firebase.Timestamp
 import kotlinx.coroutines.launch
+import kz.market.R
 import kz.market.domain.models.Product
+import kz.market.domain.models.ProductInputState
+import kz.market.domain.models.unitOptions
+import kz.market.presentation.components.ProductItem
+import kz.market.presentation.components.camera.CameraScannerSheet
 import kz.market.utils.UIGetState
+import kz.market.utils.UISetState
 
 
-sealed class StorageTab(
-    val title: String,
-    val icon: ImageVector? = null,
-    val content: @Composable () -> Unit
-) {
-    object QuickAddProduct : StorageTab(
-        title = "Быстрое добавление",
-        icon = null,
-        content = { QuickAddScreen() }
-    )
 
-    object RegisterArrival : StorageTab(
-        title = "Оформить приход",
-        icon = null,
-        content = { RegisterArrivalScreen() }
-    )
+sealed class DeleteResult {
+    data class Success(val message: String) : DeleteResult()
+    data class Error(val message: String) : DeleteResult()
 }
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun QuickAddScreen(modifier: Modifier = Modifier) {
+fun QuickAddScreen(
+    addProductState: UISetState,
+    productState: UIGetState<Product>,
+    onBarcodeScanned: (String) -> Unit,
+    onAddNewProductClick: (Product) -> Unit,
+    onDetailsClick: (String) -> Unit
+) {
+    val inputState = remember {
+        mutableStateOf(
+            ProductInputState()
+        )
+    }
+
+    val isProductExists = productState is UIGetState.Success<Product>
+
+    var showInputError by remember { mutableStateOf(false) }
+    var showCameraScanner by remember { mutableStateOf(false) }
+    var showDropDown by remember { mutableStateOf(false) }
+
     LazyColumn(
-        modifier = modifier
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        items(100) {
-            Text(text = "Item $it")
+        item {
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(10.dp)
+            ) {
+                Icon(
+                    modifier = Modifier
+                        .padding(top = 3.dp, end = 10.dp),
+                    painter = painterResource(R.drawable.ic_info),
+                    contentDescription = "Info",
+                    tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                )
+
+                Text(
+                    text = """ Перед добавлением товара, пожалуйста, убедитесь в следующем:
+    • Название товара не пустое
+    • Штрих-код введён корректно
+    • Цена больше 0 (в тенге)
+    • Количество больше 0
+                    """.trimIndent(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                )
+
+            }
+        }
+
+        item {
+            val selectedLabel = unitOptions.find { it.value == inputState.value.unit }?.label
+                ?: "Выберите единицу измерения"
+
+            OutlinedTextField(
+                isError = showInputError,
+                singleLine = true,
+                supportingText = {
+                    if (showInputError) {
+                        Text(
+                            text = "Это поле обязательно для заполнения",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth(),
+                value = inputState.value.barcode,
+                onValueChange = {
+                    inputState.value = inputState.value.copy(barcode = it)
+                    onBarcodeScanned(it)
+                },
+                label = { Text("Штрих-код товара") },
+                trailingIcon = {
+                    IconButton(
+                        onClick = {
+                            showCameraScanner = true
+                        }
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_scan),
+                            contentDescription = "Barcode"
+                        )
+                    }
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+
+
+
+            OutlinedTextField(
+                isError = showInputError,
+                singleLine = true,
+                supportingText = {
+                    if (showInputError) {
+                        Text(
+                            text = "Это поле обязательно для заполнения",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth(),
+                value = inputState.value.name,
+                onValueChange = { inputState.value = inputState.value.copy(name = it) },
+                label = { Text("Название товара") }
+            )
+
+
+            OutlinedTextField(
+                isError = showInputError,
+                singleLine = true,
+                supportingText = {
+                    if (showInputError) {
+                        Text(
+                            text = "Это поле обязательно для заполнения",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth(),
+                value = inputState.value.price,
+                onValueChange = {
+                    if (it.all { ch -> ch.isDigit() || ch == '.' }) {
+                        inputState.value = inputState.value.copy(price = it)
+                    }
+                },
+                trailingIcon = {
+                    Icon(
+                        modifier = Modifier
+                            .width(15.dp)
+                            .height(15.dp),
+                        painter = painterResource(R.drawable.ic_tenge_sign),
+                        contentDescription = "Product price"
+                    )
+                },
+                label = { Text("Реализационная цена товара") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+
+
+            OutlinedTextField(
+                isError = showInputError,
+                singleLine = true,
+                supportingText = {
+                    if (showInputError) {
+                        Text(
+                            text = "Это поле обязательно для заполнения",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth(),
+                value = inputState.value.ownPrice,
+                onValueChange = {
+                    if (it.all { ch -> ch.isDigit() || ch == '.' }) {
+                        inputState.value = inputState.value.copy(ownPrice = it)
+                    }
+                },
+                trailingIcon = {
+                    Icon(
+                        modifier = Modifier
+                            .width(15.dp)
+                            .height(15.dp),
+                        painter = painterResource(R.drawable.ic_tenge_sign),
+                        contentDescription = "Product price"
+                    )
+                },
+                label = { Text("Себестоимость товара") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+
+
+
+            ExposedDropdownMenuBox(
+                expanded = showDropDown,
+                onExpandedChange = { showDropDown = !showDropDown }
+            ) {
+                OutlinedTextField(
+                    readOnly = true,
+                    value = selectedLabel,
+                    onValueChange = {},
+                    label = {
+                        Text("Единица измерения товара")
+                    },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(showDropDown)
+                    },
+                    modifier = Modifier
+                        .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
+                        .fillMaxWidth(),
+                )
+
+                ExposedDropdownMenu(
+                    expanded = showDropDown,
+                    onDismissRequest = { showDropDown = false }
+                ) {
+                    unitOptions.forEach { (label, value) ->
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = {
+                                inputState.value = inputState.value.copy(unit = value)
+                                showDropDown = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(15.dp))
+
+            OutlinedTextField(
+                isError = showInputError,
+                singleLine = true,
+                supportingText = {
+                    if (showInputError) {
+                        Text(
+                            text = "Это поле обязательно для заполнения",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth(),
+                value = inputState.value.quantity,
+                onValueChange = {
+                    if (it.all { ch -> ch.isDigit() || ch == '.' }) {
+                        inputState.value = inputState.value.copy(quantity = it)
+                    }
+                },
+                label = { Text("Остаток товара на складе") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+        }
+
+        item {
+            OutlinedButton(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                onClick = {
+                    if (inputState.value.isNotValid()) {
+                        showInputError = true
+                        return@OutlinedButton
+                    }
+
+                    showInputError = false
+
+                    val product = inputState.value.toProduct()
+
+                    onAddNewProductClick(product)
+                },
+                enabled = !isProductExists
+            ) {
+                Text(
+                    text = "Добавить товар"
+                )
+            }
         }
     }
+
+    CameraScannerSheet(
+        visible = showCameraScanner,
+        onDismiss = { showCameraScanner = false },
+        onScan = { barcode ->
+            inputState.value = inputState.value.copy(barcode = barcode)
+            onBarcodeScanned(barcode)
+            showCameraScanner = false
+        }
+    )
 }
 
 
 @Composable
-fun RegisterArrivalScreen(modifier: Modifier = Modifier) {
+fun RegisterInventoryArrivalScreen(modifier: Modifier = Modifier) {
     Text(
         text = "Register Arrival Screen",
         modifier = modifier
@@ -67,20 +373,98 @@ fun RegisterArrivalScreen(modifier: Modifier = Modifier) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StorageAddProductScreen(
-    viewModel: StorageViewModel = hiltViewModel()
+fun StorageAddProductContent(
+    addProductState: UISetState,
+    deleteProductResult: UISetState,
+    productState: UIGetState<Product>,
+    onBarcodeScanned: (String) -> Unit,
+    onAddNewProductClick: (Product) -> Unit,
+    onDetailsClick: (String) -> Unit,
+    onProductDeleteClick: (String) -> Unit,
+    resetStates: () -> Unit
 ) {
     val tabNames = listOf(
-        StorageTab.QuickAddProduct,
-        StorageTab.RegisterArrival
+        "Быстрое добавление",
+        "Оформить приход"
     )
 
+    var product = Product.EMPTY
+
+    val bottomSheetState = rememberModalBottomSheetState()
+    var bottomSheetVisible by remember { mutableStateOf(false) }
+    var deleteResult: DeleteResult? by remember { mutableStateOf(null) }
+
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    val snackBarHostState = remember { SnackbarHostState() }
+
+    val scope = rememberCoroutineScope()
     val horizontalPagerState = rememberPagerState(
         initialPage = 0,
         initialPageOffsetFraction = 0f,
         pageCount = { tabNames.size }
     )
-    val scope = rememberCoroutineScope()
+
+
+    LaunchedEffect(productState) {
+        when (productState) {
+            is UIGetState.Success<Product> -> {
+                bottomSheetVisible = true
+                product = Product(
+                    barcode = productState.data.barcode,
+                    name = productState.data.name,
+                    price = productState.data.price,
+                    ownPrice = productState.data.ownPrice,
+                    quantity = productState.data.quantity,
+                    unit = productState.data.unit,
+                    createdAt = productState.data.createdAt,
+                    updatedAt = productState.data.updatedAt
+                )
+            }
+
+            else -> Unit
+        }
+    }
+
+
+    LaunchedEffect(addProductState) {
+        when (addProductState) {
+            is UISetState.Error -> {
+                snackBarHostState.showSnackbar(
+                    message = addProductState.message,
+                    withDismissAction = true
+                )
+                resetStates()
+            }
+
+            is UISetState.Success -> {
+                snackBarHostState.showSnackbar(
+                    message = "Товар успешно добавлен",
+                    withDismissAction = true
+                )
+                resetStates()
+            }
+
+            else -> Unit
+        }
+    }
+
+    LaunchedEffect(deleteProductResult) {
+        when (deleteProductResult) {
+            is UISetState.Error -> {
+                deleteResult = DeleteResult.Error(deleteProductResult.message)
+                resetStates()
+            }
+
+            is UISetState.Success -> {
+                deleteResult = DeleteResult.Success("Товар успешно удалён")
+                resetStates()
+            }
+
+            else -> Unit
+        }
+    }
+
 
     Scaffold(
         topBar = {
@@ -89,7 +473,8 @@ fun StorageAddProductScreen(
                     Text(text = "Добавление товара")
                 },
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(hostState = snackBarHostState) }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -99,7 +484,7 @@ fun StorageAddProductScreen(
             PrimaryTabRow (
                 selectedTabIndex = horizontalPagerState.currentPage
             ) {
-                tabNames.forEachIndexed { index, tab ->
+                tabNames.forEachIndexed { index, label ->
                     Tab(
                         selected = horizontalPagerState.currentPage == index,
                         onClick = {
@@ -107,9 +492,8 @@ fun StorageAddProductScreen(
                                 horizontalPagerState.animateScrollToPage(index)
                             }
                         },
-                        text = { Text(text = tab.title) },
-                        icon = tab.icon?.let { { Icon(it, contentDescription = tab.title) } },
-                        unselectedContentColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+                        text = { Text(text = label) },
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -118,11 +502,207 @@ fun StorageAddProductScreen(
                 state = horizontalPagerState,
                 modifier = Modifier
                     .fillMaxSize()
-            ) { page ->
-                tabNames[page].content()
+            ) { index ->
+                when (index) {
+                    0 -> QuickAddScreen(
+                        addProductState = addProductState,
+                        productState = productState,
+                        onBarcodeScanned = onBarcodeScanned,
+                        onAddNewProductClick = onAddNewProductClick,
+                        onDetailsClick = onDetailsClick
+                    )
+
+                    1 -> RegisterInventoryArrivalScreen()
+                }
             }
         }
+
+
+        if (bottomSheetVisible) {
+            ModalBottomSheet(
+                onDismissRequest = {
+                    bottomSheetVisible = false
+                    deleteResult = null
+                },
+                sheetState = bottomSheetState,
+                shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp),
+            ) {
+                when (deleteResult) {
+                    is DeleteResult.Error -> {
+                        Text(
+                            modifier = Modifier
+                                .fillMaxWidth(),
+                            text = "Ошибка при удалений товара",
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
+
+                        Text(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                    top = 10.dp,
+                                    bottom = 20.dp
+                                ),
+                            text = (deleteResult as DeleteResult.Error).message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    is DeleteResult.Success -> {
+                        Text(
+                            modifier = Modifier
+                                .fillMaxWidth(),
+                            text = "Товар удален",
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        Text(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                    top = 10.dp,
+                                    bottom = 20.dp
+                                ),
+                            text = (deleteResult as DeleteResult.Success).message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    null -> {
+                        Text(
+                            modifier = Modifier
+                                .fillMaxWidth(),
+                            text = "Товар уже добавлен",
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
+
+                        Text(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                    top = 10.dp,
+                                    bottom = 20.dp
+                                ),
+                            text = "Штрихкод этого товара уже зарегистрирован на складе. Вы можете просмотреть его данные ниже.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        ProductItem(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                    bottom = 10.dp
+                                )
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            product = product,
+                            onClick = { product ->
+                                onDetailsClick(product.barcode)
+                            }
+                        )
+
+                        Row(
+                            modifier = Modifier
+                                .padding(vertical = 10.dp, horizontal = 16.dp)
+                        ) {
+                            TextButton(
+                                modifier = Modifier
+                                    .weight(1f),
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                ),
+                                onClick = {
+                                    showDeleteDialog = true
+                                }
+                            ) {
+                                Text(
+                                    text = "Удалить"
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(10.dp))
+
+                            FilledTonalButton(
+                                modifier = Modifier
+                                    .weight(1f),
+                                onClick = {
+                                    onDetailsClick(product.barcode)
+                                }
+                            ) {
+                                Text(
+                                    text = "Показать"
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("Удаление товара") },
+                text = { Text("Вы уверены, что хотите удалить этот товар? Это действие нельзя будет отменить.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showDeleteDialog = false
+
+                        onProductDeleteClick(product.barcode)
+                    }) {
+                        Text("Удалить", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = false }) {
+                        Text("Отмена")
+                    }
+                }
+            )
+        }
     }
+}
+
+@Composable
+fun StorageAddProductScreen(
+    viewModel: StorageViewModel = hiltViewModel(),
+    onDetailsClick: (String) -> Unit
+) {
+    val addProductState by viewModel.addProductResult.collectAsState()
+    val deleteProductResult by viewModel.deleteProductResult.collectAsState()
+    val productState by viewModel.productState.collectAsState()
+
+    StorageAddProductContent(
+        addProductState = addProductState,
+        deleteProductResult = deleteProductResult,
+        productState = productState,
+        onBarcodeScanned = viewModel::getProductByBarcode,
+        onAddNewProductClick = viewModel::addProduct,
+        onDetailsClick = onDetailsClick,
+        onProductDeleteClick = viewModel::deleteProduct,
+        resetStates = viewModel::resetState
+    )
 }
 
 
@@ -133,5 +713,14 @@ fun StorageAddProductScreen(
 )
 @Composable
 private fun StorageAddScreenPreview() {
-    StorageAddProductScreen()
+    StorageAddProductContent(
+        addProductState = UISetState.Idle,
+        deleteProductResult = UISetState.Idle,
+        productState = UIGetState.Empty,
+        onBarcodeScanned = {},
+        onAddNewProductClick = {},
+        onDetailsClick = {},
+        onProductDeleteClick = {},
+        resetStates = {}
+    )
 }

@@ -16,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -23,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,16 +33,19 @@ fun CameraScannerSheet(
     onDismiss: () -> Unit,
     onScan: (String) -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val bottomSheetState = rememberModalBottomSheetState()
 
     var requestingPermission by remember { mutableStateOf(false) }
+    var sheetReady by remember { mutableStateOf(false) }
 
     if (requestingPermission) {
         CameraPermissionHandler(
             onPermissionGranted = {
                 requestingPermission = false
+                sheetReady = true
             },
             onPermissionDeniedPermanently = {
                 requestingPermission = false
@@ -66,12 +71,25 @@ fun CameraScannerSheet(
     LaunchedEffect(visible) {
         if (visible) {
             requestingPermission = true
+        } else  {
+            sheetReady = false
         }
     }
 
-    if (visible && !requestingPermission) {
+    LaunchedEffect(sheetReady) {
+        if (sheetReady && bottomSheetState.isVisible.not()) {
+            bottomSheetState.show()
+        }
+    }
+
+    if (sheetReady) {
         ModalBottomSheet(
-            onDismissRequest = onDismiss,
+            onDismissRequest = {
+                scope.launch {
+                    bottomSheetState.hide()
+                    onDismiss()
+                }
+            },
             sheetState = bottomSheetState,
             shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp),
             contentColor = Color.Transparent,
@@ -89,8 +107,11 @@ fun CameraScannerSheet(
                     context = context,
                     lifecycleOwner = lifecycleOwner,
                     onBarcodeScanned = { barcode ->
-                        onScan(barcode)
-                        onDismiss()
+                        scope.launch {
+                            bottomSheetState.hide()
+                            onScan(barcode)
+                            onDismiss()
+                        }
                     }
                 )
 

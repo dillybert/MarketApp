@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -27,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import kz.market.R
 import kz.market.domain.models.Product
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 
 @Composable
@@ -36,12 +36,6 @@ fun ProductItem(
     onClick: (product: Product) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val date = product.updatedAt.toDate()
-    val formattedDate = SimpleDateFormat(
-        "dd/MM/yy",
-        Locale.getDefault()
-    ).format(date)
-
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -54,6 +48,7 @@ fun ProductItem(
     ) {
         Box(
             modifier = Modifier
+                .padding(start = 3.dp, end = 10.dp)
                 .width(70.dp)
                 .height(70.dp)
                 .clip(RoundedCornerShape(10.dp))
@@ -70,12 +65,10 @@ fun ProductItem(
             )
         }
 
-        Spacer(modifier = Modifier.width(10.dp))
-
         Column(
             modifier = Modifier
                 .fillMaxHeight()
-                .weight(2f),
+                .weight(3f),
             verticalArrangement = Arrangement.SpaceEvenly
         ) {
             Text(
@@ -97,7 +90,7 @@ fun ProductItem(
                 Spacer(modifier = Modifier.weight(1f))
 
                 Text(
-                    text = "Обновлено: $formattedDate",
+                    text = "Обновлено: ${product.formattedUpdatedAtDate}",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -134,8 +127,9 @@ private fun ProductItemPreview() {
         product = Product(
             barcode = "5555555555555",
             name = "Test Product",
-            price = 21.0,
-            quantity = 10
+            price = 21000.0,
+            quantity = 100,
+            unit = "шт"
         ),
         onClick = {}
     )

@@ -57,6 +57,7 @@ import com.google.firebase.Timestamp
 import kz.market.R
 import kz.market.domain.models.Product
 import kz.market.domain.models.ProductInputState
+import kz.market.domain.models.unitOptions
 import kz.market.presentation.components.camera.CameraScannerSheet
 import kz.market.utils.UIGetState
 import kz.market.utils.UISetState
@@ -76,12 +77,6 @@ fun StorageDetailsContent(
     var showDropDown by remember { mutableStateOf(false) }
     var showInputError by remember { mutableStateOf(false) }
     val snackBarHostState = remember { SnackbarHostState() }
-
-    val options = mapOf(
-        "Килограмм" to "кг",
-        "Штука" to "шт",
-        "Литр" to "л"
-    )
 
     val inputState = remember(productState) { mutableStateOf(
         when (productState) {
@@ -188,16 +183,14 @@ fun StorageDetailsContent(
                                 contentDescription = "Info"
                             )
 
-                            Spacer(modifier = Modifier.height(20.dp))
-
                             Text(
+                                modifier = Modifier
+                                    .padding(top = 20.dp, bottom = 8.dp),
                                 text = "Информация",
                                 textAlign = TextAlign.Center,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 style = MaterialTheme.typography.titleLarge
                             )
-
-                            Spacer(modifier = Modifier.height(8.dp))
 
                             Text(
                                 text = "К сожалению, товар не найден. Возможно, он был удалён.",
@@ -287,9 +280,9 @@ fun StorageDetailsContent(
                                 )
 
                                 Text(
-                                    text = """ Перед обновлением данных товара пожалуйста, убедитесь, что:
+                                    text = """ Перед обновлением данных товара, пожалуйста, убедитесь в следующем:
     • Название товара не пустое
-    • Штрих-код введён правильно
+    • Штрих-код введён корректно
     • Цена больше 0 (в тенге)
     • Количество больше 0
                     """.trimIndent(),
@@ -301,7 +294,7 @@ fun StorageDetailsContent(
                         }
 
                         item {
-                            val selectedLabel = options.entries.find { it.value == inputState.value.unit }?.key
+                            val selectedLabel = unitOptions.find { it.value == inputState.value.unit }?.label
                                 ?: "Выберите единицу измерения"
 
                             OutlinedTextField(
@@ -449,7 +442,7 @@ fun StorageDetailsContent(
                                     expanded = showDropDown,
                                     onDismissRequest = { showDropDown = false }
                                 ) {
-                                    options.forEach { (label, value) ->
+                                    unitOptions.forEach { (label, value) ->
                                         DropdownMenuItem(
                                             text = { Text(label) },
                                             onClick = {
@@ -531,9 +524,9 @@ fun StorageDetailsContent(
                                     .fillMaxWidth()
                                     .height(50.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = Color.Red
+                                    contentColor = MaterialTheme.colorScheme.error
                                 ),
-                                border = BorderStroke(1.dp, Color.Red),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
                                 onClick = {
                                     showDialog = true
                                 }
@@ -621,7 +614,9 @@ fun StorageDetailsScreen(
 @Composable
 private fun StorageDetailsScreenPreview() {
     StorageDetailsContent(
-        productState = UIGetState.Empty,
+        productState = UIGetState.Success(
+            Product()
+        ),
         updateProductResult = UISetState.Idle,
         deleteProductResult = UISetState.Idle,
         onProductSaveClick = {},

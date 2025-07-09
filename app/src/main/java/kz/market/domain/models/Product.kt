@@ -5,6 +5,17 @@ import com.google.firebase.Timestamp
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+data class UnitOption(
+    val label: String,
+    val value: String
+)
+
+val unitOptions: List<UnitOption> = listOf(
+    UnitOption("Килограмм", "кг"),
+    UnitOption("Штука", "шт"),
+    UnitOption("Литр", "л")
+)
+
 @Keep
 data class Product(
     val barcode: String = "",
@@ -66,9 +77,7 @@ data class ProductInputState(
             price.toDoubleOrNull()?.let { it > 0.0 } == true &&
             ownPrice.toDoubleOrNull()?.let { it > 0.0 } == true &&
             quantity.toIntOrNull()?.let { it > 0 } == true &&
-            unit.isNotBlank() &&
-            createdAt.isNotBlank() &&
-            updatedAt.isNotBlank()
+            unit.isNotBlank()
 
     fun isNotValid(): Boolean = !isValid()
 
@@ -78,6 +87,6 @@ data class ProductInputState(
         price = price.toDoubleOrNull() ?: 0.0,
         ownPrice = ownPrice.toDoubleOrNull() ?: 0.0,
         quantity = quantity.toIntOrNull() ?: 0,
-        unit = unit
+        unit = unit,
     )
 }
