@@ -477,6 +477,31 @@ fun RegisterInventoryArrivalScreen(
                 )
             )
         }
+
+        item {
+            AutoCompleteTextField(
+                value = text,
+                modifier = Modifier
+                    .fillMaxWidth(),
+                label = { Text("Поставщик товара") },
+                onValueChange = {
+                    text = it
+                },
+                onSuggestionSelected = {
+                    text = TextFieldValue(
+                        it,
+                        selection = TextRange(it.length)
+                    )
+                },
+                suggestions = listOf(
+                    SuggestionOption("Apple"),
+                    SuggestionOption("Banana"),
+                    SuggestionOption("Pineapple"),
+                    SuggestionOption("Kiwi"),
+                    SuggestionOption("Strawberry")
+                )
+            )
+        }
     }
 
 
