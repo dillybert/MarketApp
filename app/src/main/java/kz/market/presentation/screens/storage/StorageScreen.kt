@@ -1,8 +1,15 @@
 package kz.market.presentation.screens.storage
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,10 +18,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +52,7 @@ import kz.market.R
 import kz.market.domain.models.Product
 import kz.market.presentation.components.ProductItem
 import kz.market.presentation.components.camera.CameraScannerSheet
+import kz.market.presentation.utils.ProductFilter
 import kz.market.utils.UIGetState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,9 +60,11 @@ import kz.market.utils.UIGetState
 fun StorageScreenContent(
     productsListState: UIGetState<List<Product>>,
     searchTextState: String,
+    filterState: ProductFilter,
     onProductDetailsClick: (barcode: String) -> Unit,
     onProductAddButtonClick: () -> Unit,
     onSearchTextChanged: (String) -> Unit,
+    onCategoryFilterChange: (ProductFilter) -> Unit
 ) {
     var showCameraScanner by remember { mutableStateOf(false) }
 
@@ -190,14 +205,18 @@ fun StorageScreenContent(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(innerPadding)
-                        .padding(horizontal = 14.dp)
+                        .padding(innerPadding),
+                    contentPadding = PaddingValues(
+                        vertical = 10.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     item {
                         OutlinedTextField(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(top = 10.dp),
+                                .padding(horizontal = 14.dp),
+                            shape = RoundedCornerShape(10.dp),
                             value = searchTextState,
                             onValueChange = { newText ->
                                 onSearchTextChanged(newText)
@@ -232,8 +251,40 @@ fun StorageScreenContent(
                         )
                     }
 
-                    item {
-                        Spacer(modifier = Modifier.height(20.dp))
+                    stickyHeader {
+                        LazyRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.background),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp)
+                        ) {
+                            items(ProductFilter.getAll()) { filter ->
+                                FilterChip(
+                                    selected = (filter == filterState),
+                                    onClick = {
+                                        onCategoryFilterChange(filter)
+                                    },
+                                    label = {
+                                        Text(text = filter.displayName)
+                                    },
+                                    leadingIcon = {
+                                        AnimatedVisibility(
+                                            visible = (filter == filterState),
+                                            enter = fadeIn() + expandHorizontally(),
+                                            exit = shrinkHorizontally() + fadeOut()
+                                        ) {
+                                            Icon(
+                                                modifier = Modifier
+                                                    .width(18.dp),
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = "Selected"
+                                            )
+                                        }
+                                    }
+                                )
+                            }
+                        }
                     }
 
                     when {
@@ -241,8 +292,7 @@ fun StorageScreenContent(
                             item {
                                 Text(
                                     modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 10.dp),
+                                        .fillMaxWidth(),
                                     text = "Не найдено",
                                     textAlign = TextAlign.Center,
                                     style = MaterialTheme.typography.titleMedium
@@ -251,8 +301,11 @@ fun StorageScreenContent(
                         }
 
                         else -> {
-                            items(productsList) { item ->
+                            items(productsList, key = { it.barcode }) { item ->
                                 ProductItem(
+                                    modifier = Modifier
+                                        .animateItem()
+                                        .padding(horizontal = 14.dp),
                                     product = item,
                                     onClick = { product ->
                                         onProductDetailsClick(
@@ -289,9 +342,11 @@ fun StorageScreen(
     StorageScreenContent(
         productsListState = viewModel.filteredProductsState.collectAsState().value,
         searchTextState = viewModel.searchQueryForProducts.collectAsState().value,
+        filterState = viewModel.searchFilterForProducts.collectAsState().value,
         onProductDetailsClick = onProductDetailsClick,
         onProductAddButtonClick = onProductAddButtonClick,
-        onSearchTextChanged = viewModel::updateSearchQuery
+        onSearchTextChanged = viewModel::updateSearchQuery,
+        onCategoryFilterChange = viewModel::onCategoryFilterChange
     )
 }
 
@@ -304,13 +359,21 @@ fun StorageScreen(
 private fun StorageScreenPreview() {
     StorageScreenContent(
         productsListState = UIGetState.Success(listOf(
-            Product()
+            Product(
+                barcode = "5555555555555",
+                name = "Test Product",
+                price = 21000.0,
+                quantity = 100.0,
+                unit = "шт"
+            )
         )),
         searchTextState = "",
+        filterState = ProductFilter.All,
         onProductDetailsClick = { barcode ->
 
         },
         onProductAddButtonClick = {},
-        onSearchTextChanged = {}
+        onSearchTextChanged = {},
+        onCategoryFilterChange = {}
     )
 }

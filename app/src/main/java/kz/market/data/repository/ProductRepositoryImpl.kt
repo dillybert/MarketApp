@@ -1,18 +1,22 @@
 package kz.market.data.repository
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kz.market.data.remote.FirebaseProductService
 import kz.market.domain.models.Product
 import kz.market.domain.repository.ProductRepository
+import kz.market.presentation.utils.ProductFilter
 import javax.inject.Inject
 
 class ProductRepositoryImpl @Inject constructor(
     private val service: FirebaseProductService
 ) : ProductRepository {
+
     override fun getAllProducts(): Flow<List<Product>> = service.observeAllFrom(
         collectionName = "products",
-        clazz = Product::class.java
+        type = Product::class.java
     )
+
     override suspend fun addProduct(product: Product): Result<Unit> = service.putTo(
         collectionName = "products",
         documentId = product.barcode,
@@ -28,11 +32,12 @@ class ProductRepositoryImpl @Inject constructor(
     override suspend fun getProductByBarcode(barcode: String): Result<Product?> = service.getById(
         collectionName = "products",
         documentId = barcode,
-        clazz = Product::class.java
+        type = Product::class.java
     )
 
     override suspend fun deleteProduct(barcode: String): Result<Unit> = service.deleteFrom(
         collectionName = "products",
         documentId = barcode
     )
+
 }

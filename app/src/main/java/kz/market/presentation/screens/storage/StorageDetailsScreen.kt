@@ -1,6 +1,5 @@
 package kz.market.presentation.screens.storage
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -46,8 +46,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -56,9 +56,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.firebase.Timestamp
 import kz.market.R
 import kz.market.domain.models.Product
-import kz.market.domain.models.ProductInputState
-import kz.market.domain.models.unitOptions
 import kz.market.presentation.components.camera.CameraScannerSheet
+import kz.market.presentation.utils.UnitOption
 import kz.market.utils.UIGetState
 import kz.market.utils.UISetState
 
@@ -78,25 +77,37 @@ fun StorageDetailsContent(
     var showInputError by remember { mutableStateOf(false) }
     val snackBarHostState = remember { SnackbarHostState() }
 
-    val inputState = remember(productState) { mutableStateOf(
-        when (productState) {
-            is UIGetState.Success<Product> -> productState.data.let {
-                ProductInputState(
-                    barcode = it.barcode,
-                    name = it.name,
-                    price = it.price.toString(),
-                    ownPrice = it.ownPrice.toString(),
-                    quantity = it.quantity.toString(),
-                    unit = it.unit,
-                    createdAt = it.formattedCreatedAtDate,
-                    updatedAt = it.formattedUpdatedAtDate
-                )
+    val inputState = remember(productState) {
+        mutableStateOf(
+            when (productState) {
+                is UIGetState.Success<Product> -> productState.data.let {
+                    Product(
+                        barcode = it.barcode,
+                        name = it.name,
+                        price = it.price,
+                        ownPrice = it.ownPrice,
+                        quantity = it.quantity,
+                        supplier = it.supplier,
+                        unit = it.unit,
+                        createdAt = it.createdAt,
+                        updatedAt = it.updatedAt
+                    )
+                }
+
+                else -> Product.EMPTY
             }
+        )
+    }
 
-            else -> ProductInputState()
-        }
-    ) }
+    val priceInput = remember(productState) { mutableStateOf(inputState.value.price.toString()) }
+    val ownPriceInput = remember(productState) { mutableStateOf(inputState.value.ownPrice.toString()) }
+    val quantityInput = remember(productState) { mutableStateOf(inputState.value.quantity.toString()) }
 
+    val unitOptions: List<UnitOption> = listOf(
+        UnitOption("Килограмм", "кг"),
+        UnitOption("Штучно", "шт"),
+        UnitOption("Литр", "л")
+    )
 
     LaunchedEffect(updateProductResult) {
         when (updateProductResult) {
@@ -364,10 +375,30 @@ fun StorageDetailsContent(
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth(),
-                                value = inputState.value.price,
+                                value = inputState.value.supplier,
+                                onValueChange = { inputState.value = inputState.value.copy(supplier = it) },
+                                label = { Text("Поставщик товара") }
+                            )
+
+
+                            OutlinedTextField(
+                                isError = showInputError,
+                                singleLine = true,
+                                supportingText = {
+                                    if (showInputError) {
+                                        Text(
+                                            text = "Это поле обязательно для заполнения",
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth(),
+                                value = priceInput.value,
                                 onValueChange = {
                                     if (it.all { ch -> ch.isDigit() || ch == '.' }) {
-                                        inputState.value = inputState.value.copy(price = it)
+                                        priceInput.value = it
                                     }
                                 },
                                 trailingIcon = {
@@ -398,10 +429,10 @@ fun StorageDetailsContent(
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth(),
-                                value = inputState.value.ownPrice,
+                                value = ownPriceInput.value,
                                 onValueChange = {
                                     if (it.all { ch -> ch.isDigit() || ch == '.' }) {
-                                        inputState.value = inputState.value.copy(ownPrice = it)
+                                        ownPriceInput.value = it
                                     }
                                 },
                                 trailingIcon = {
@@ -470,63 +501,78 @@ fun StorageDetailsContent(
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth(),
-                                value = inputState.value.quantity,
+                                value = quantityInput.value,
                                 onValueChange = {
                                     if (it.all { ch -> ch.isDigit() || ch == '.' }) {
-                                        inputState.value = inputState.value.copy(quantity = it)
+                                        quantityInput.value = it
                                     }
+                                },
+                                trailingIcon = {
+                                    Text(
+                                        text = inputState.value.unit,
+                                    )
                                 },
                                 label = { Text("Остаток товара на складе") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                             )
 
                             Text(
-                                modifier = Modifier
-                                    .padding(bottom = 15.dp),
-                                text = "Товар создан ${inputState.value.createdAt}",
-                                style = MaterialTheme.typography.bodyMedium
+                                text = "Создан: ${inputState.value.formattedCreatedAtDate}",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                                modifier = Modifier.padding(bottom = 10.dp)
                             )
 
                             Text(
-                                text = "Последнее обновление ${inputState.value.updatedAt}",
-                                style = MaterialTheme.typography.bodyMedium
+                                text = "Обновлен: ${inputState.value.formattedUpdatedAtDate}",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                             )
                         }
 
                         item {
-                            OutlinedButton(
+                            Button(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(50.dp),
                                 onClick = {
-                                    if (inputState.value.isNotValid()) {
+                                    if (inputState.value.hasAnyMissingFields() &&
+                                        priceInput.value.isEmpty() &&
+                                        ownPriceInput.value.isEmpty() &&
+                                        quantityInput.value.isEmpty()) {
                                         showInputError = true
-                                        return@OutlinedButton
+                                        return@Button
                                     }
 
                                     showInputError = false
 
-                                    val product = inputState.value.toProduct()
-                                    product.updatedAt = Timestamp.now()
+                                    inputState.value = inputState.value.copy(
+                                        price = priceInput.value.toDoubleOrNull() ?: 0.0,
+                                        ownPrice = ownPriceInput.value.toDoubleOrNull() ?: 0.0,
+                                        quantity = quantityInput.value.toDoubleOrNull() ?: 0.0,
+                                        updatedAt = Timestamp.now()
+                                    )
 
-                                    onProductSaveClick(product)
+
+                                    onProductSaveClick(inputState.value)
                                 }
                             ) {
                                 Text(
                                     text = "Обновить данные товара"
                                 )
                             }
-                        }
 
-                        item {
-                            OutlinedButton(
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            TextButton(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(50.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     contentColor = MaterialTheme.colorScheme.error
                                 ),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
                                 onClick = {
                                     showDialog = true
                                 }
@@ -536,6 +582,8 @@ fun StorageDetailsContent(
                                 )
                             }
                         }
+
+                        item { Spacer(modifier = Modifier.height(10.dp)) }
                     }
                 }
             }

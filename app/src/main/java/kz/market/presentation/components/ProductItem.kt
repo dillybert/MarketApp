@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -27,14 +28,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kz.market.R
 import kz.market.domain.models.Product
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 @Composable
 fun ProductItem(
     product: Product,
     onClick: (product: Product) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    background: Color = MaterialTheme.colorScheme.surface
 ) {
     Row(
         modifier = modifier
@@ -43,7 +43,8 @@ fun ProductItem(
             .clip(RoundedCornerShape(10.dp))
             .clickable {
                 onClick(product)
-            },
+            }
+            .background(background),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -83,7 +84,7 @@ fun ProductItem(
                     .fillMaxWidth(),
             ) {
                 Text(
-                    text = "${product.quantity} ${product.unit}.",
+                    text = "${if (product.quantity % 1 == 0.0) product.quantity.toInt() else product.quantity} ${product.unit}.",
                     style = MaterialTheme.typography.bodySmall
                 )
 
@@ -104,6 +105,7 @@ fun ProductItem(
         ) {
             Icon(
                 modifier = Modifier
+                    .padding(bottom = 1.dp)
                     .width(13.dp)
                     .height(13.dp),
                 painter = painterResource(R.drawable.ic_tenge_sign),
@@ -128,7 +130,7 @@ private fun ProductItemPreview() {
             barcode = "5555555555555",
             name = "Test Product",
             price = 21000.0,
-            quantity = 100,
+            quantity = 100.0,
             unit = "шт"
         ),
         onClick = {}

@@ -12,7 +12,7 @@ class FirebaseProductService @Inject constructor(
 ) {
     fun <T : Any> observeAllFrom(
         collectionName: String,
-        clazz: Class<T>
+        type: Class<T>
     ): Flow<List<T>> = callbackFlow {
         val listener = firestore.collection(collectionName)
             .addSnapshotListener { snapshot, error ->
@@ -22,7 +22,7 @@ class FirebaseProductService @Inject constructor(
                 }
 
                 val documents = snapshot?.documents?.mapNotNull { doc ->
-                    doc.toObject(clazz)
+                    doc.toObject(type)
                 } ?: emptyList()
 
                 trySend(documents)
@@ -33,13 +33,13 @@ class FirebaseProductService @Inject constructor(
     suspend fun <T : Any> getById(
         collectionName: String,
         documentId: String,
-        clazz: Class<T>
+        type: Class<T>
     ): Result<T?> = try {
         val snapshot = firestore.collection(collectionName)
             .document(documentId)
             .get()
             .await()
-        Result.success(snapshot.toObject(clazz))
+        Result.success(snapshot.toObject(type))
     } catch (e: Exception) {
         Result.failure(e)
     }

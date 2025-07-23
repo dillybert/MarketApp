@@ -3,6 +3,7 @@ package kz.market.presentation.screens.storage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,7 +29,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
@@ -50,22 +50,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.google.firebase.Timestamp
 import kotlinx.coroutines.launch
 import kz.market.R
 import kz.market.domain.models.Product
-import kz.market.domain.models.ProductInputState
-import kz.market.domain.models.unitOptions
+import kz.market.presentation.components.AutoCompleteTextField
 import kz.market.presentation.components.ProductItem
 import kz.market.presentation.components.camera.CameraScannerSheet
+import kz.market.presentation.utils.SuggestionOption
+import kz.market.presentation.utils.UnitOption
 import kz.market.utils.UIGetState
 import kz.market.utils.UISetState
-
 
 
 sealed class DeleteResult {
@@ -85,9 +86,21 @@ fun QuickAddScreen(
 ) {
     val inputState = remember {
         mutableStateOf(
-            ProductInputState()
+            Product(
+                supplier = Product.DEFAULT_SUPPLIER
+            )
         )
     }
+
+    val priceInput = remember { mutableStateOf("") }
+    val ownPriceInput = remember { mutableStateOf("") }
+    val quantityInput = remember { mutableStateOf("") }
+
+    val unitOptions: List<UnitOption> = listOf(
+        UnitOption("Килограмм", "кг"),
+        UnitOption("Штучно", "шт"),
+        UnitOption("Литр", "л")
+    )
 
     val isProductExists = productState is UIGetState.Success<Product>
 
@@ -171,7 +184,17 @@ fun QuickAddScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
 
+            OutlinedTextField(
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth(),
+                value = inputState.value.supplier,
+                enabled = false,
+                label = { Text("Поставщик товара") },
+                onValueChange = {}
+            )
 
+            Spacer(modifier = Modifier.height(15.dp))
 
             OutlinedTextField(
                 isError = showInputError,
@@ -207,10 +230,10 @@ fun QuickAddScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth(),
-                value = inputState.value.price,
+                value = priceInput.value,
                 onValueChange = {
                     if (it.all { ch -> ch.isDigit() || ch == '.' }) {
-                        inputState.value = inputState.value.copy(price = it)
+                        priceInput.value = it
                     }
                 },
                 trailingIcon = {
@@ -241,10 +264,10 @@ fun QuickAddScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth(),
-                value = inputState.value.ownPrice,
+                value = ownPriceInput.value,
                 onValueChange = {
                     if (it.all { ch -> ch.isDigit() || ch == '.' }) {
-                        inputState.value = inputState.value.copy(ownPrice = it)
+                        ownPriceInput.value = it
                     }
                 },
                 trailingIcon = {
@@ -313,10 +336,19 @@ fun QuickAddScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth(),
-                value = inputState.value.quantity,
+                value = quantityInput.value,
                 onValueChange = {
                     if (it.all { ch -> ch.isDigit() || ch == '.' }) {
-                        inputState.value = inputState.value.copy(quantity = it)
+                        quantityInput.value = it
+                    }
+                },
+                trailingIcon = {
+                    unitOptions.find {
+                        it.value == inputState.value.unit
+                    }?.let {
+                        Text(
+                            text = it.value,
+                        )
                     }
                 },
                 label = { Text("Остаток товара на складе") },
@@ -325,21 +357,33 @@ fun QuickAddScreen(
         }
 
         item {
-            OutlinedButton(
+            Button(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 onClick = {
-                    if (inputState.value.isNotValid()) {
+                    if (inputState.value.hasAnyMissingFields() &&
+                        priceInput.value.isEmpty() &&
+                        ownPriceInput.value.isEmpty() &&
+                        quantityInput.value.isEmpty()) {
                         showInputError = true
-                        return@OutlinedButton
+                        return@Button
                     }
 
                     showInputError = false
 
-                    val product = inputState.value.toProduct()
+                    inputState.value = inputState.value.copy(
+                        price = priceInput.value.toDoubleOrNull() ?: 0.0,
+                        ownPrice = ownPriceInput.value.toDoubleOrNull() ?: 0.0,
+                        quantity = quantityInput.value.toDoubleOrNull() ?: 0.0
+                    )
 
-                    onAddNewProductClick(product)
+                    onAddNewProductClick(inputState.value)
+
+                    inputState.value = Product.EMPTY
+                    priceInput.value = ""
+                    ownPriceInput.value = ""
+                    quantityInput.value = ""
                 },
                 enabled = !isProductExists
             ) {
@@ -347,6 +391,8 @@ fun QuickAddScreen(
                     text = "Добавить товар"
                 )
             }
+
+            Spacer(modifier = Modifier.height(10.dp))
         }
     }
 
@@ -363,11 +409,166 @@ fun QuickAddScreen(
 
 
 @Composable
-fun RegisterInventoryArrivalScreen(modifier: Modifier = Modifier) {
-    Text(
-        text = "Register Arrival Screen",
-        modifier = modifier
-    )
+fun RegisterInventoryArrivalScreen(
+
+) {
+    var text by remember { mutableStateOf(TextFieldValue("")) }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(
+            vertical = 10.dp,
+            horizontal = 14.dp
+        )
+    ) { 
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(10.dp)
+            ) {
+                Icon(
+                    modifier = Modifier
+                        .padding(top = 3.dp, end = 10.dp),
+                    painter = painterResource(R.drawable.ic_info),
+                    contentDescription = "Info",
+                    tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                )
+
+                Text(
+                    text = """Перед оформлением прихода убедитесь, что:
+    • Выбран правильный поставщик
+    • Указана дата прихода
+    • Все позиции и их количество верны
+    • Цены на товары актуальны
+                    """.trimIndent(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                )
+
+            }
+        }
+
+        item {
+            AutoCompleteTextField(
+                value = text,
+                modifier = Modifier
+                    .fillMaxWidth(),
+                label = { Text("Поставщик товара") },
+                onValueChange = {
+                    text = it
+                },
+                onSuggestionSelected = {
+                    text = TextFieldValue(
+                        it,
+                        selection = TextRange(it.length)
+                    )
+                },
+                suggestions = listOf(
+                    SuggestionOption("Apple"),
+                    SuggestionOption("Banana"),
+                    SuggestionOption("Pineapple"),
+                    SuggestionOption("Kiwi"),
+                    SuggestionOption("Strawberry")
+                )
+            )
+        }
+    }
+
+
+//    var isCheckboxChecked by remember { mutableStateOf(false) }
+//
+//    Box(
+//        modifier = Modifier
+//            .fillMaxSize()
+//            .padding(horizontal = 16.dp),
+//        contentAlignment = Alignment.Center
+//    ) {
+//        Column {
+//            OutlinedTextField(
+//                modifier = Modifier
+//                    .fillMaxWidth(),
+//                value = "",
+//                label = {
+//                    Text("Приходная цена товара")
+//                },
+//                onValueChange = {},
+//                enabled = !isCheckboxChecked
+//            )
+//
+//            Row(
+//                verticalAlignment = Alignment.CenterVertically,
+//            ) {
+//                Checkbox(
+//                    checked = isCheckboxChecked,
+//                    onCheckedChange = {
+//                        isCheckboxChecked = it
+//                    }
+//                )
+//
+//                Text(
+//                    text = "Консигнация",
+//                    style = MaterialTheme.typography.bodyMedium,
+//                    fontWeight = FontWeight.SemiBold,
+//                    modifier = Modifier
+//                        .clickable(
+//                            indication = null,
+//                            interactionSource = remember { MutableInteractionSource() },
+//                        ) {
+//                            isCheckboxChecked = !isCheckboxChecked
+//                        }
+//                )
+//            }
+//        }
+//    }
+
+
+
+//    val context = LocalContext.current
+//
+//    // State to hold the selected date
+//    val calendar = Calendar.getInstance()
+//    val year = calendar.get(Calendar.YEAR)
+//    val month = calendar.get(Calendar.MONTH)
+//    val day = calendar.get(Calendar.DAY_OF_MONTH)
+//
+//    var selectedDate by remember { mutableStateOf("$day/${month + 1}/$year") }
+//
+//    val datePickerDialog = DatePickerDialog(
+//        context,
+//        { _: DatePicker, pickedYear: Int, pickedMonth: Int, pickedDay: Int ->
+//            selectedDate = "$pickedDay/${pickedMonth + 1}/$pickedYear"
+//        },
+//        year,
+//        month,
+//        day
+//    )
+//
+//    Box(
+//        modifier = Modifier
+//            .fillMaxSize(),
+//        contentAlignment = Alignment.Center
+//    ) {
+//        Column {
+//            Text(
+//                text = "Выбранная дата: $selectedDate"
+//            )
+//
+//            Spacer(modifier = Modifier.height(10.dp))
+//
+//            Button(
+//                onClick = {
+//                    datePickerDialog.show()
+//                }
+//            ) {
+//                Text(text = "Open Date Picker")
+//            }
+//        }
+//    }
 }
 
 
@@ -400,7 +601,7 @@ fun StorageAddProductContent(
 
     val scope = rememberCoroutineScope()
     val horizontalPagerState = rememberPagerState(
-        initialPage = 0,
+        initialPage = 1,
         initialPageOffsetFraction = 0f,
         pageCount = { tabNames.size }
     )

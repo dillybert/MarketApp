@@ -1,5 +1,5 @@
 [versions]
-agp = "8.10.1"
+agp = "8.11.1"
 kotlin = "2.0.21"
 coreKtx = "1.16.0"
 junit = "4.13.2"
@@ -35,6 +35,9 @@ kspVersion = "2.1.21-2.0.1"
 # Navigation
 navigationVersion = "2.9.0"
 
+# Compose Charts
+composeChartsVersion = "0.1.7"
+
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -67,6 +70,9 @@ androidx-ml-vision-barcode = { group = "com.google.mlkit", name = "barcode-scann
 
 #Guava
 com-google-guava = { group = "com.google.guava", name = "guava", version.ref = "guava" }
+
+# Compose Charts
+compose-charts = { group = "io.github.ehsannarmani", name = "compose-charts", version.ref = "composeChartsVersion" }
 
 # Navigation
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationVersion" }

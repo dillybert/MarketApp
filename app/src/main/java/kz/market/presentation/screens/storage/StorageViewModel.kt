@@ -3,12 +3,14 @@ package kz.market.presentation.screens.storage
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -18,6 +20,7 @@ import kz.market.domain.usecases.product.DeleteProductByBarcodeUseCase
 import kz.market.domain.usecases.product.GetAllProductsUseCase
 import kz.market.domain.usecases.product.GetProductByBarcodeUseCase
 import kz.market.domain.usecases.product.UpdateProductUseCase
+import kz.market.presentation.utils.ProductFilter
 import kz.market.utils.UIGetState
 import kz.market.utils.UISetState
 import javax.inject.Inject
@@ -34,18 +37,41 @@ class StorageViewModel @Inject constructor(
     private val _searchQueryForProducts = MutableStateFlow("")
     val searchQueryForProducts: StateFlow<String> = _searchQueryForProducts.asStateFlow()
 
+    private val _searchFilterForProducts = MutableStateFlow<ProductFilter>(ProductFilter.All)
+    val searchFilterForProducts: StateFlow<ProductFilter> = _searchFilterForProducts.asStateFlow()
+
     private val _productsState = MutableStateFlow<UIGetState<List<Product>>>(UIGetState.Loading)
 
+    @OptIn(FlowPreview::class)
     val filteredProductsState: StateFlow<UIGetState<List<Product>>> = combine(
         _productsState,
-        _searchQueryForProducts
-    ) { state, queries ->
+        searchQueryForProducts.debounce(500),
+        _searchFilterForProducts
+    ) { state, queries, filter ->
         when (state) {
             is UIGetState.Success -> {
-                val filteredProducts = state.data.filter { product ->
-                    product.name.contains(queries, ignoreCase = true) ||
-                            product.barcode.contains(queries)
-                }
+                val filteredProducts = state.data
+                    .filter { product ->
+                        product.name.contains(queries, ignoreCase = true) ||
+                                product.barcode.contains(queries)
+                    }
+                    .filter { product ->
+                        when(filter) {
+                            ProductFilter.All -> true
+                            ProductFilter.OutOfStock -> product.quantity <= 5
+                            ProductFilter.LastUpdated -> product.updatedAt != null
+                            ProductFilter.LastAdded -> product.createdAt != null
+                            ProductFilter.Price -> product.price != null
+                        }
+                    }
+                    .let { products ->
+                        when (filter) {
+                            ProductFilter.LastUpdated -> products.sortedByDescending { it.updatedAt }
+                            ProductFilter.LastAdded -> products.sortedByDescending { it.createdAt }
+                            ProductFilter.Price -> products.sortedBy { it.price }
+                            else -> products
+                        }
+                    }
                 UIGetState.Success(filteredProducts)
             }
 
@@ -84,6 +110,10 @@ class StorageViewModel @Inject constructor(
 
     fun updateSearchQuery(query: String) {
         _searchQueryForProducts.value = query
+    }
+
+    fun onCategoryFilterChange(filter: ProductFilter) {
+        _searchFilterForProducts.value = filter
     }
 
     fun addProduct(product: Product) {

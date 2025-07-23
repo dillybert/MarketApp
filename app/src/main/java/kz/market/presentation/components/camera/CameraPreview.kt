@@ -49,7 +49,7 @@ fun CameraPreview(
 
         onDispose {
             cameraProvider.unbindAll()
-            cameraExecutor.shutdown() // ✅ avoid leaking threads
+            cameraExecutor.shutdown() // avoid leaking threads
         }
     }
 
