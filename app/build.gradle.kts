@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.dagger.hilt)
     alias(libs.plugins.kotlinx.serialization)
+    id("kotlin-parcelize")
 }
 
 android {
@@ -70,6 +71,9 @@ dependencies {
 
     //Guava
     implementation(libs.com.google.guava)
+
+    //OkHTTP
+    implementation(libs.com.squareup.okhttp3)
 
     // Navigation
     implementation(libs.androidx.navigation.compose)

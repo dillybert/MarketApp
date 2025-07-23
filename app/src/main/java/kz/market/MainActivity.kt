@@ -19,6 +19,10 @@ class MainActivity : ComponentActivity() {
             MarketApp()
         }
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+    }
 }
 
 @Preview(
