@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -61,6 +62,7 @@ import kotlinx.coroutines.launch
 import kz.market.R
 import kz.market.domain.models.Product
 import kz.market.presentation.components.AutoCompleteTextField
+import kz.market.presentation.components.DatePickerModal
 import kz.market.presentation.components.ProductItem
 import kz.market.presentation.components.camera.CameraScannerSheet
 import kz.market.presentation.utils.SuggestionOption
@@ -408,6 +410,7 @@ fun QuickAddScreen(
 }
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterInventoryArrivalScreen(
 
@@ -502,6 +505,44 @@ fun RegisterInventoryArrivalScreen(
                 )
             )
         }
+
+//        item {
+//            var selectedDate by remember { mutableStateOf("") }
+//            var showDatePicker by remember { mutableStateOf(false) }
+//
+//            Column {
+//                Button(
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .height(50.dp),
+//                    onClick = {
+//                        showDatePicker = true
+//                    }
+//                ) {
+//                    Text(
+//                        text = "Выбрать дату"
+//                    )
+//                }
+//
+//                Text(
+//                    text = selectedDate
+//                )
+//            }
+//
+//            if (showDatePicker) {
+//                DatePickerModal(
+//                    onDateSelected = { date ->
+//                        selectedDate = date?.let {
+//                            java.text.SimpleDateFormat("dd.MM.yyyy").format(it)
+//                        } ?: ""
+//                        showDatePicker = false
+//                    },
+//                    onDismiss = {
+//                        showDatePicker = false
+//                    }
+//                )
+//            }
+//        }
     }
 
 

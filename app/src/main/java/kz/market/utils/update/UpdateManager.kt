@@ -4,6 +4,7 @@ package kz.market.utils.update
 import android.app.DownloadManager
 import android.content.Context
 import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Environment
 import android.util.Log
 import androidx.core.net.toUri
@@ -25,6 +26,8 @@ class UpdateManager(
 
         try {
             val request = Request.Builder()
+                .header("Accept", "application/vnd.github.v3+json")
+                .header("X-GitHub-Api-Version", "2022-11-28")
                 .url("https://api.github.com/repos/$repoOwner/$repoName/releases/latest")
                 .build()
             val response = client.newCall(request).execute()
@@ -42,13 +45,15 @@ class UpdateManager(
             val currentVersion = appContext.packageManager
                 .getPackageInfo(appContext.packageName, 0).versionName ?: "0.0.0"
 
-            return@withContext if (isNewer(remoteVersion, currentVersion)) {
-                UpdateInfo(
+            return@withContext when {
+                isNewer(remoteVersion, currentVersion) -> UpdateInfo(
                     version = remoteVersion,
                     downloadUrl = asset.getString("browser_download_url"),
                     changelog = json.optString("body")
                 )
-            } else null
+
+                else -> null
+            }
         } catch (e: Exception) {
             Log.e("UpdateManager", "checkForUpdates failed", e)
             null
@@ -72,9 +77,11 @@ class UpdateManager(
 
 
     private fun isNewer(remote: String, local: String): Boolean {
-        val r = remote.split(".").map { it.toIntOrNull() ?: 0 }
-        val l = local.split(".").map { it.toIntOrNull() ?: 0 }
-        for (i in 0..2) {
+        val r = remote.split(".").mapNotNull { it.toIntOrNull() }
+        val l = local.split(".").mapNotNull { it.toIntOrNull() }
+        val maxLen = maxOf(r.size, l.size)
+
+        for (i in 0 until maxLen) {
             val rv = r.getOrElse(i) { 0 }
             val lv = l.getOrElse(i) { 0 }
             if (rv != lv) return rv > lv
@@ -82,9 +89,13 @@ class UpdateManager(
         return false
     }
 
+
     private fun isNetworkAvailable(): Boolean {
         val cm = appContext.getSystemService(ConnectivityManager::class.java)
-        val n = cm.activeNetworkInfo
-        return n?.isConnected == true
+        val activeNetwork = cm.activeNetwork ?: return false
+        val capabilities = cm.getNetworkCapabilities(activeNetwork) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
+
 }

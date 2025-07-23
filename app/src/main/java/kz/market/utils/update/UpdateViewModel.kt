@@ -29,8 +29,4 @@ class UpdateViewModel @Inject constructor(
     fun dismissDialog() {
         _updateInfo.value = null
     }
-
-    override fun onCleared() {
-        super.onCleared()
-    }
 }

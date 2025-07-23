@@ -27,7 +27,6 @@ object UpdatePrefs {
 
 class DownloadCompleteReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        Log.d("DownloadCompleteReceiver", "onReceive: ${intent.action}")
         if (intent.action != DownloadManager.ACTION_DOWNLOAD_COMPLETE) return
 
         Log.d("DownloadCompleteReceiver", "onReceive: ${intent.action}")
@@ -38,7 +37,7 @@ class DownloadCompleteReceiver : BroadcastReceiver() {
 
         val dm = context.getSystemService(DownloadManager::class.java)
         val uri = dm.getUriForDownloadedFile(finishedId)
-            ?: return // можно ещё через COLUMN_LOCAL_URI
+            ?: return
 
         installApk(context, uri)
     }
@@ -55,12 +54,11 @@ class DownloadCompleteReceiver : BroadcastReceiver() {
                 return
             }
         }
-        val i = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
-            data = uri
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
-            putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
         }
-        ctx.startActivity(i)
+        ctx.startActivity(intent)
     }
 }
 
