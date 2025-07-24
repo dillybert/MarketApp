@@ -69,6 +69,7 @@ import kz.market.presentation.utils.SuggestionOption
 import kz.market.presentation.utils.UnitOption
 import kz.market.utils.UIGetState
 import kz.market.utils.UISetState
+import java.text.SimpleDateFormat
 import java.util.Locale
 
 
@@ -534,7 +535,7 @@ fun RegisterInventoryArrivalScreen(
                 DatePickerModal(
                     onDateSelected = { date ->
                         selectedDate = date?.let {
-                            java.text.SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(it)
+                            SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(it)
                         } ?: ""
                         showDatePicker = false
                     },
