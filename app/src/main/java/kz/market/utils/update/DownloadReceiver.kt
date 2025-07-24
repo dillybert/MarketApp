@@ -19,9 +19,11 @@ object UpdatePrefs {
         ctx.getSharedPreferences(NAME, Context.MODE_PRIVATE)
             .edit { putLong(KEY_ID, id) }
 
-    fun loadId(ctx: Context): Long =
-        ctx.getSharedPreferences(NAME, Context.MODE_PRIVATE)
+    fun loadId(ctx: Context): Long? {
+        val id = ctx.getSharedPreferences(NAME, Context.MODE_PRIVATE)
             .getLong(KEY_ID, -1L)
+        return if (id == -1L) null else id
+    }
 }
 
 
@@ -32,7 +34,7 @@ class DownloadCompleteReceiver : BroadcastReceiver() {
         Log.d("DownloadCompleteReceiver", "onReceive: ${intent.action}")
 
         val finishedId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
-        val expectedId = UpdatePrefs.loadId(context)
+        val expectedId = UpdatePrefs.loadId(context) ?: return
         if (finishedId != expectedId) return
 
         val dm = context.getSystemService(DownloadManager::class.java)
@@ -58,7 +60,12 @@ class DownloadCompleteReceiver : BroadcastReceiver() {
             setDataAndType(uri, "application/vnd.android.package-archive")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
         }
-        ctx.startActivity(intent)
+
+        try {
+            ctx.startActivity(intent)
+        } catch (e: SecurityException) {
+            Log.e("DownloadCompleteReceiver", "Ошибка установки APK: ${e.message}")
+        }
     }
 }
 

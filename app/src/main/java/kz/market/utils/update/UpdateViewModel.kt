@@ -1,5 +1,9 @@
 package kz.market.utils.update
 
+import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,17 +20,38 @@ class UpdateViewModel @Inject constructor(
     private val _updateInfo = MutableStateFlow<UpdateInfo?>(null)
     val updateInfo: StateFlow<UpdateInfo?> = _updateInfo
 
+    var progress by mutableIntStateOf(0)
+        private set
+
     init {
         viewModelScope.launch {
             _updateInfo.value = updateManager.checkForUpdates()
         }
     }
 
-    fun confirmUpdate() {
-        _updateInfo.value?.let { updateManager.startDownload(it) }
-    }
-
     fun dismissDialog() {
         _updateInfo.value = null
+    }
+
+    fun startUpdateFlow(updateInfo: UpdateInfo) {
+        val id = updateManager.startDownload(updateInfo)
+        updateManager.observeDownloadProgress(
+            downloadId = id,
+            scope = viewModelScope,
+            onProgress = { p ->
+                progress = p
+                Log.d("UpdateViewModel", "Progress: $progress")
+            },
+            onSuccess = {},
+            onFailure = {
+                progress = 0
+                Log.d("UpdateViewModel", "Download failed")
+            }
+        )
+    }
+
+    override fun onCleared() {
+        updateManager.cancelProgressTracking()
+        super.onCleared()
     }
 }

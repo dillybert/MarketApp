@@ -33,6 +33,7 @@ import kz.market.presentation.navigation.ProductSalesMain
 import kz.market.presentation.navigation.ReportsMain
 import kz.market.presentation.navigation.StorageMain
 import kz.market.presentation.theme.MarketTheme
+import kz.market.utils.update.DownloadProgressDialog
 import kz.market.utils.update.UpdateDialog
 import kz.market.utils.update.UpdateViewModel
 
@@ -42,6 +43,7 @@ fun MarketApp() {
         val updateViewModel: UpdateViewModel = hiltViewModel()
         val info by updateViewModel.updateInfo.collectAsState()
         var showUpdateDialog by remember { mutableStateOf(true) }
+        var showDownloadProgressDialog by remember { mutableStateOf(false) }
 
         val rootNavController = rememberNavController()
         val currentBackStack by rootNavController.currentBackStackEntryAsState()
@@ -109,12 +111,22 @@ fun MarketApp() {
                 UpdateDialog(
                     info = info!!,
                     onConfirm = {
-                        updateViewModel.confirmUpdate()
+                        updateViewModel.startUpdateFlow(info!!)
                         showUpdateDialog = false
+                        showDownloadProgressDialog = true
                     },
                     onDismiss = {
                         updateViewModel.dismissDialog()
                         showUpdateDialog = false
+                    }
+                )
+            }
+
+            if (showDownloadProgressDialog) {
+                DownloadProgressDialog(
+                    updateViewModel.progress,
+                    onCompleted = {
+                        showDownloadProgressDialog = false
                     }
                 )
             }

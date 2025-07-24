@@ -1,4 +1,3 @@
-// kz/market/update/UpdateManager.kt
 package kz.market.utils.update
 
 import android.app.DownloadManager
@@ -8,11 +7,16 @@ import android.net.NetworkCapabilities
 import android.os.Environment
 import android.util.Log
 import androidx.core.net.toUri
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import java.io.File
 
 class UpdateManager(
     private val appContext: Context,
@@ -20,6 +24,7 @@ class UpdateManager(
     private val repoName: String
 ) {
     private val client = OkHttpClient()
+    private var progressJob: Job? = null
 
     suspend fun checkForUpdates(): UpdateInfo? = withContext(Dispatchers.IO) {
         if (!isNetworkAvailable()) return@withContext null
@@ -46,7 +51,7 @@ class UpdateManager(
                 .getPackageInfo(appContext.packageName, 0).versionName ?: "0.0.0"
 
             return@withContext when {
-                isNewer(remoteVersion, currentVersion) -> UpdateInfo(
+                remoteVersion != currentVersion -> UpdateInfo(
                     version = remoteVersion,
                     downloadUrl = asset.getString("browser_download_url"),
                     changelog = json.optString("body")
@@ -60,10 +65,18 @@ class UpdateManager(
         }
     }
 
-    fun startDownload(info: UpdateInfo) {
+    fun startDownload(info: UpdateInfo): Long {
+        val apkFile = File(
+            appContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
+            "update.apk"
+        )
+
+        if (apkFile.exists()) apkFile.delete()
+
         val dm = appContext.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(info.downloadUrl.toUri())
             .setTitle("Скачивание обновления")
+            .setMimeType("application/vnd.android.package-archive")
             .setDestinationInExternalFilesDir(
                 appContext,
                 Environment.DIRECTORY_DOWNLOADS,
@@ -73,22 +86,74 @@ class UpdateManager(
 
         val id = dm.enqueue(request)
         UpdatePrefs.saveId(appContext, id)
+        return id
     }
 
 
-    private fun isNewer(remote: String, local: String): Boolean {
-        val r = remote.split(".").mapNotNull { it.toIntOrNull() }
-        val l = local.split(".").mapNotNull { it.toIntOrNull() }
-        val maxLen = maxOf(r.size, l.size)
+    fun observeDownloadProgress(
+        downloadId: Long,
+        scope: CoroutineScope,
+        onProgress: (Int) -> Unit,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit
+    ) {
+        val dm = appContext.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
 
-        for (i in 0 until maxLen) {
-            val rv = r.getOrElse(i) { 0 }
-            val lv = l.getOrElse(i) { 0 }
-            if (rv != lv) return rv > lv
+        progressJob?.cancel()
+        progressJob = scope.launch(Dispatchers.IO) {
+            var downloading = true
+            while (downloading) {
+                val query = DownloadManager.Query().setFilterById(downloadId)
+                val cursor = dm.query(query)
+
+                if (cursor != null && cursor.moveToFirst()) {
+                    val downloadedIndex = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
+                    val totalIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                    val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+
+                    if (downloadedIndex != -1 && totalIndex != -1 && statusIndex != -1) {
+                        val downloaded = cursor.getLong(downloadedIndex)
+                        val total = cursor.getLong(totalIndex)
+                        val status = cursor.getInt(statusIndex)
+
+                        when (status) {
+                            DownloadManager.STATUS_SUCCESSFUL -> {
+                                withContext(Dispatchers.Main) {
+                                    onProgress(100)
+                                    onSuccess()
+                                }
+                                downloading = false
+                            }
+
+                            DownloadManager.STATUS_FAILED -> {
+                                withContext(Dispatchers.Main) {
+                                    onFailure()
+                                }
+                                downloading = false
+                            }
+
+                            else -> {
+                                if (total > 0) {
+                                    val percent = (downloaded * 100 / total).toInt().coerceIn(0, 100)
+                                    withContext(Dispatchers.Main) {
+                                        onProgress(percent)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                cursor?.close()
+                delay(300L)
+            }
         }
-        return false
     }
 
+
+    fun cancelProgressTracking() {
+        progressJob?.cancel()
+        progressJob = null
+    }
 
     private fun isNetworkAvailable(): Boolean {
         val cm = appContext.getSystemService(ConnectivityManager::class.java)
