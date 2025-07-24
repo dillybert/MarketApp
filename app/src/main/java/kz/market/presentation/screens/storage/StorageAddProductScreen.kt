@@ -69,6 +69,7 @@ import kz.market.presentation.utils.SuggestionOption
 import kz.market.presentation.utils.UnitOption
 import kz.market.utils.UIGetState
 import kz.market.utils.UISetState
+import java.util.Locale
 
 
 sealed class DeleteResult {
@@ -506,43 +507,43 @@ fun RegisterInventoryArrivalScreen(
             )
         }
 
-//        item {
-//            var selectedDate by remember { mutableStateOf("") }
-//            var showDatePicker by remember { mutableStateOf(false) }
-//
-//            Column {
-//                Button(
-//                    modifier = Modifier
-//                        .fillMaxWidth()
-//                        .height(50.dp),
-//                    onClick = {
-//                        showDatePicker = true
-//                    }
-//                ) {
-//                    Text(
-//                        text = "Выбрать дату"
-//                    )
-//                }
-//
-//                Text(
-//                    text = selectedDate
-//                )
-//            }
-//
-//            if (showDatePicker) {
-//                DatePickerModal(
-//                    onDateSelected = { date ->
-//                        selectedDate = date?.let {
-//                            java.text.SimpleDateFormat("dd.MM.yyyy").format(it)
-//                        } ?: ""
-//                        showDatePicker = false
-//                    },
-//                    onDismiss = {
-//                        showDatePicker = false
-//                    }
-//                )
-//            }
-//        }
+        item {
+            var selectedDate by remember { mutableStateOf("") }
+            var showDatePicker by remember { mutableStateOf(false) }
+
+            Column {
+                Button(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    onClick = {
+                        showDatePicker = true
+                    }
+                ) {
+                    Text(
+                        text = "Выбрать дату"
+                    )
+                }
+
+                Text(
+                    text = selectedDate
+                )
+            }
+
+            if (showDatePicker) {
+                DatePickerModal(
+                    onDateSelected = { date ->
+                        selectedDate = date?.let {
+                            java.text.SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(it)
+                        } ?: ""
+                        showDatePicker = false
+                    },
+                    onDismiss = {
+                        showDatePicker = false
+                    }
+                )
+            }
+        }
     }
 
 
