@@ -15,11 +15,16 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kz.market.domain.models.Product
+import kz.market.domain.models.SupplierSuggestion
 import kz.market.domain.usecases.product.AddProductUseCase
 import kz.market.domain.usecases.product.DeleteProductByBarcodeUseCase
 import kz.market.domain.usecases.product.GetAllProductsUseCase
 import kz.market.domain.usecases.product.GetProductByBarcodeUseCase
 import kz.market.domain.usecases.product.UpdateProductUseCase
+import kz.market.domain.usecases.supplier.suggestion.AddSuggestionUseCase
+import kz.market.domain.usecases.supplier.suggestion.DeleteSuggestionUseCase
+import kz.market.domain.usecases.supplier.suggestion.GetAllSuggestionsUseCase
+import kz.market.domain.usecases.supplier.suggestion.UpdateSuggestionUseCase
 import kz.market.presentation.utils.ProductFilter
 import kz.market.utils.UIGetState
 import kz.market.utils.UISetState
@@ -31,7 +36,12 @@ class StorageViewModel @Inject constructor(
     private val getProductByBarcodeUseCase: GetProductByBarcodeUseCase,
     private val addProductUseCase: AddProductUseCase,
     private val updateProductUseCase: UpdateProductUseCase,
-    private val deleteProductByBarcodeUseCase: DeleteProductByBarcodeUseCase
+    private val deleteProductByBarcodeUseCase: DeleteProductByBarcodeUseCase,
+
+    private val getAllSupplierSuggestionsUseCase: GetAllSuggestionsUseCase,
+    private val addSupplierSuggestionUseCase: AddSuggestionUseCase,
+    private val updateSupplierSuggestionUseCase: UpdateSuggestionUseCase,
+    private val deleteSupplierSuggestionUseCase: DeleteSuggestionUseCase
 ) : ViewModel() {
 
     private val _searchQueryForProducts = MutableStateFlow("")
@@ -91,8 +101,24 @@ class StorageViewModel @Inject constructor(
     private val _productState = MutableStateFlow<UIGetState<Product>>(UIGetState.Loading)
     val productState: StateFlow<UIGetState<Product>> = _productState.asStateFlow()
 
+
+
+    private val _supplierSuggestionsState =
+        MutableStateFlow<UIGetState<List<SupplierSuggestion>>>(UIGetState.Loading)
+    val supplierSuggestionsState: StateFlow<UIGetState<List<SupplierSuggestion>>> = _supplierSuggestionsState.asStateFlow()
+
+    private val _addSupplierSuggestionResult = MutableStateFlow<UISetState>(UISetState.Idle)
+    val addSupplierSuggestionResult: StateFlow<UISetState> = _addSupplierSuggestionResult
+
+    private val _updateSupplierSuggestionResult = MutableStateFlow<UISetState>(UISetState.Idle)
+    val updateSupplierSuggestionResult: StateFlow<UISetState> = _updateSupplierSuggestionResult
+
+    private val _deleteSupplierSuggestionResult = MutableStateFlow<UISetState>(UISetState.Idle)
+    val deleteSupplierSuggestionResult: StateFlow<UISetState> = _deleteSupplierSuggestionResult
+
     init {
         observeAllProducts()
+        observeAllSupplierSuggestions()
     }
 
     private fun observeAllProducts() {
@@ -175,9 +201,63 @@ class StorageViewModel @Inject constructor(
         }
     }
 
+
+    fun observeAllSupplierSuggestions() {
+        viewModelScope.launch {
+            getAllSupplierSuggestionsUseCase()
+                .onStart { _supplierSuggestionsState.value = UIGetState.Loading }
+                .catch { e ->
+                    _supplierSuggestionsState.value = UIGetState.Error(e.message ?: "Unknown error")
+                }
+                .collect { suggestions ->
+                    _supplierSuggestionsState.value = if (suggestions.isEmpty()) UIGetState.Empty else UIGetState.Success(suggestions)
+                }
+        }
+    }
+
+    fun addSupplierSuggestion(suggestion: SupplierSuggestion) {
+        viewModelScope.launch {
+            _addSupplierSuggestionResult.value = UISetState.Loading
+
+            val result = addSupplierSuggestionUseCase(suggestion)
+            _addSupplierSuggestionResult.value = when {
+                result.isSuccess -> UISetState.Success
+                else -> UISetState.Error(result.exceptionOrNull()?.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun updateSupplierSuggestion(suggestion: SupplierSuggestion) {
+        viewModelScope.launch {
+            _updateSupplierSuggestionResult.value = UISetState.Loading
+
+            val result = updateSupplierSuggestionUseCase(suggestion)
+            _updateSupplierSuggestionResult.value = when {
+                result.isSuccess -> UISetState.Success
+                else -> UISetState.Error(result.exceptionOrNull()?.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun deleteSupplierSuggestion(id: String) {
+        viewModelScope.launch {
+            _deleteSupplierSuggestionResult.value = UISetState.Loading
+
+            val result = deleteSupplierSuggestionUseCase(id)
+            _deleteSupplierSuggestionResult.value = when {
+                result.isSuccess -> UISetState.Success
+                else -> UISetState.Error(result.exceptionOrNull()?.message ?: "Unknown error")
+            }
+        }
+    }
+
     fun resetState() {
         _addProductResult.value = UISetState.Idle
         _updateProductResult.value = UISetState.Idle
         _deleteProductResult.value = UISetState.Idle
+
+        _addSupplierSuggestionResult.value = UISetState.Idle
+        _updateSupplierSuggestionResult.value = UISetState.Idle
+        _deleteSupplierSuggestionResult.value = UISetState.Idle
     }
 }

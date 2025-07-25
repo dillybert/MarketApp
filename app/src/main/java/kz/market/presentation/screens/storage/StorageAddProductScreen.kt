@@ -19,7 +19,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -61,11 +61,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.launch
 import kz.market.R
 import kz.market.domain.models.Product
+import kz.market.domain.models.SupplierSuggestion
 import kz.market.presentation.components.AutoCompleteTextField
 import kz.market.presentation.components.DatePickerModal
 import kz.market.presentation.components.ProductItem
 import kz.market.presentation.components.camera.CameraScannerSheet
-import kz.market.presentation.utils.SuggestionOption
 import kz.market.presentation.utils.UnitOption
 import kz.market.utils.UIGetState
 import kz.market.utils.UISetState
@@ -415,7 +415,8 @@ fun QuickAddScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterInventoryArrivalScreen(
-
+    supplierSuggestionsState: UIGetState<List<SupplierSuggestion>>,
+    onSuggestionRegistered: (SupplierSuggestion) -> Unit
 ) {
     var text by remember { mutableStateOf(TextFieldValue("")) }
 
@@ -459,53 +460,35 @@ fun RegisterInventoryArrivalScreen(
         }
 
         item {
-            AutoCompleteTextField(
-                value = text,
-                modifier = Modifier
-                    .fillMaxWidth(),
-                label = { Text("Поставщик товара") },
-                onValueChange = {
-                    text = it
-                },
-                onSuggestionSelected = {
-                    text = TextFieldValue(
-                        it,
-                        selection = TextRange(it.length)
+            when (supplierSuggestionsState) {
+                is UIGetState.Success ->
+                    AutoCompleteTextField(
+                        value = text,
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        label = { Text("Поставщик товара") },
+                        onValueChange = {
+                            text = it
+                        },
+                        onSuggestionSelected = {
+                            text = TextFieldValue(
+                                it,
+                                selection = TextRange(it.length)
+                            )
+                        },
+                        suggestions = supplierSuggestionsState.data
                     )
-                },
-                suggestions = listOf(
-                    SuggestionOption("Apple"),
-                    SuggestionOption("Banana"),
-                    SuggestionOption("Pineapple"),
-                    SuggestionOption("Kiwi"),
-                    SuggestionOption("Strawberry")
-                )
-            )
-        }
-
-        item {
-            AutoCompleteTextField(
-                value = text,
-                modifier = Modifier
-                    .fillMaxWidth(),
-                label = { Text("Поставщик товара") },
-                onValueChange = {
-                    text = it
-                },
-                onSuggestionSelected = {
-                    text = TextFieldValue(
-                        it,
-                        selection = TextRange(it.length)
+                else ->
+                    OutlinedTextField(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        value = text,
+                        onValueChange = {
+                            text = it
+                        },
+                        label = { Text("Поставщик товара") }
                     )
-                },
-                suggestions = listOf(
-                    SuggestionOption("Apple"),
-                    SuggestionOption("Banana"),
-                    SuggestionOption("Pineapple"),
-                    SuggestionOption("Kiwi"),
-                    SuggestionOption("Strawberry")
-                )
-            )
+            }
         }
 
         item {
@@ -650,6 +633,8 @@ fun StorageAddProductContent(
     onAddNewProductClick: (Product) -> Unit,
     onDetailsClick: (String) -> Unit,
     onProductDeleteClick: (String) -> Unit,
+    supplierSuggestionsState: UIGetState<List<SupplierSuggestion>>,
+    onSuggestionRegistered: (SupplierSuggestion) -> Unit,
     resetStates: () -> Unit
 ) {
     val tabNames = listOf(
@@ -781,7 +766,10 @@ fun StorageAddProductContent(
                         onDetailsClick = onDetailsClick
                     )
 
-                    1 -> RegisterInventoryArrivalScreen()
+                    1 -> RegisterInventoryArrivalScreen(
+                        supplierSuggestionsState = supplierSuggestionsState,
+                        onSuggestionRegistered = onSuggestionRegistered
+                    )
                 }
             }
         }
@@ -961,6 +949,7 @@ fun StorageAddProductScreen(
     val addProductState by viewModel.addProductResult.collectAsState()
     val deleteProductResult by viewModel.deleteProductResult.collectAsState()
     val productState by viewModel.productState.collectAsState()
+    val supplierSuggestionsState by viewModel.supplierSuggestionsState.collectAsState()
 
     StorageAddProductContent(
         addProductState = addProductState,
@@ -970,6 +959,8 @@ fun StorageAddProductScreen(
         onAddNewProductClick = viewModel::addProduct,
         onDetailsClick = onDetailsClick,
         onProductDeleteClick = viewModel::deleteProduct,
+        supplierSuggestionsState = supplierSuggestionsState,
+        onSuggestionRegistered = viewModel::addSupplierSuggestion,
         resetStates = viewModel::resetState
     )
 }
@@ -990,6 +981,8 @@ private fun StorageAddScreenPreview() {
         onAddNewProductClick = {},
         onDetailsClick = {},
         onProductDeleteClick = {},
+        supplierSuggestionsState = UIGetState.Empty,
+        onSuggestionRegistered = {},
         resetStates = {}
     )
 }

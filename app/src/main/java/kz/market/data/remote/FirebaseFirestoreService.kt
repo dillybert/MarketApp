@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
-class FirebaseProductService @Inject constructor(
+class FirebaseFirestoreService @Inject constructor(
     private val firestore: FirebaseFirestore
 ) {
     fun <T : Any> observeAllFrom(

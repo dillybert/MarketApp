@@ -1,15 +1,13 @@
 package kz.market.data.repository
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
-import kz.market.data.remote.FirebaseProductService
+import kz.market.data.remote.FirebaseFirestoreService
 import kz.market.domain.models.Product
 import kz.market.domain.repository.ProductRepository
-import kz.market.presentation.utils.ProductFilter
 import javax.inject.Inject
 
 class ProductRepositoryImpl @Inject constructor(
-    private val service: FirebaseProductService
+    private val service: FirebaseFirestoreService
 ) : ProductRepository {
 
     override fun getAllProducts(): Flow<List<Product>> = service.observeAllFrom(

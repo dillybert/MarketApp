@@ -25,13 +25,13 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
 import kz.market.R
-import kz.market.presentation.utils.SuggestionOption
+import kz.market.domain.models.SupplierSuggestion
 
 @Composable
 fun AutoCompleteTextField(
     value: TextFieldValue,
     onValueChange: (TextFieldValue) -> Unit,
-    suggestions: List<SuggestionOption>,
+    suggestions: List<SupplierSuggestion>,
     onSuggestionSelected: (String) -> Unit,
     label: @Composable (() -> Unit),
     modifier: Modifier = Modifier

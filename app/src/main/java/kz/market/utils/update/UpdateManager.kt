@@ -94,7 +94,9 @@ class UpdateManager(
         downloadId: Long,
         scope: CoroutineScope,
         onProgress: (Int) -> Unit,
+        onCancelled: () -> Unit,
         onSuccess: () -> Unit,
+        onNetworkError: () -> Unit,
         onFailure: () -> Unit
     ) {
         val dm = appContext.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
@@ -106,10 +108,13 @@ class UpdateManager(
                 val query = DownloadManager.Query().setFilterById(downloadId)
                 val cursor = dm.query(query)
 
+                if (cursor == null || !cursor.moveToFirst()) onCancelled()
+
                 if (cursor != null && cursor.moveToFirst()) {
                     val downloadedIndex = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
                     val totalIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
                     val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                    val reason = cursor.getColumnIndex(DownloadManager.COLUMN_REASON)
 
                     if (downloadedIndex != -1 && totalIndex != -1 && statusIndex != -1) {
                         val downloaded = cursor.getLong(downloadedIndex)
@@ -132,7 +137,17 @@ class UpdateManager(
                                 downloading = false
                             }
 
-                            else -> {
+                            DownloadManager.STATUS_PAUSED -> {
+                                val reasonCode = cursor.getInt(reason)
+
+                                if (reasonCode == DownloadManager.PAUSED_WAITING_TO_RETRY && !isNetworkAvailable()) {
+                                    withContext(Dispatchers.Main) {
+                                        onNetworkError()
+                                    }
+                                }
+                            }
+
+                            DownloadManager.STATUS_RUNNING -> {
                                 if (total > 0) {
                                     val percent = (downloaded * 100 / total).toInt().coerceIn(0, 100)
                                     withContext(Dispatchers.Main) {

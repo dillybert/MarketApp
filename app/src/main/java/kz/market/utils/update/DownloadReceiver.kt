@@ -24,6 +24,10 @@ object UpdatePrefs {
             .getLong(KEY_ID, -1L)
         return if (id == -1L) null else id
     }
+
+    fun clearId(ctx: Context) =
+        ctx.getSharedPreferences(NAME, Context.MODE_PRIVATE)
+            .edit { remove(KEY_ID) }
 }
 
 

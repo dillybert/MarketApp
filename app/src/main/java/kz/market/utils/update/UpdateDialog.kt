@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -53,8 +54,8 @@ fun UpdateDialog(
             Column(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+                FlowRow(
+                    itemVerticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         "Доступна новая версия ",
@@ -108,12 +109,18 @@ fun UpdateDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onConfirm) {
+            Button(
+                shape = RoundedCornerShape(10.dp),
+                onClick = onConfirm
+            ) {
                 Text("Обновить")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                shape = RoundedCornerShape(10.dp),
+                onClick = onDismiss
+            ) {
                 Text("Позже")
             }
         },

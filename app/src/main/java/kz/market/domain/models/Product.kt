@@ -36,7 +36,14 @@ data class Product(
             Locale.getDefault()
         ).format(updatedAt.toDate())
 
-    fun hasAnyMissingFields(): Boolean = barcode.isEmpty() || name.isEmpty() || price == 0.0 || ownPrice == 0.0 || supplier.isEmpty() || quantity == 0.0 || unit.isEmpty()
+    fun hasAnyMissingFields(): Boolean =
+        barcode.isEmpty() ||
+        name.isEmpty() ||
+        price == 0.0 ||
+        ownPrice == 0.0 ||
+        supplier.isEmpty() ||
+        quantity == 0.0 ||
+        unit.isEmpty()
 
     companion object {
         val EMPTY = Product()

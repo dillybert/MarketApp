@@ -1,10 +1,12 @@
 package kz.market.presentation.screens
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -18,6 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -40,6 +43,8 @@ import kz.market.utils.update.UpdateViewModel
 @Composable
 fun MarketApp() {
     MarketTheme {
+        val context = LocalContext.current
+
         val updateViewModel: UpdateViewModel = hiltViewModel()
         val info by updateViewModel.updateInfo.collectAsState()
         var showUpdateDialog by remember { mutableStateOf(true) }
@@ -124,11 +129,17 @@ fun MarketApp() {
 
             if (showDownloadProgressDialog) {
                 DownloadProgressDialog(
-                    updateViewModel.progress,
+                    progress = updateViewModel.progress,
+                    connectionError = updateViewModel.networkError,
                     onCompleted = {
                         showDownloadProgressDialog = false
                     }
                 )
+            }
+
+            if (updateViewModel.downloadingCanceled) {
+                showUpdateDialog = false
+                showDownloadProgressDialog = false
             }
         }
     }
