@@ -72,7 +72,7 @@ fun StorageScreenContent(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(text = "Склад")
+                    Text(text = "Склад Тестовый")
                 },
                 actions = {
                     IconButton(
