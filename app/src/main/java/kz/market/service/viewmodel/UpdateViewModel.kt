@@ -24,7 +24,8 @@ class UpdateViewModel @Inject constructor(
     private val observeDownloadProgressUseCase: ObserveDownloadProgressUseCase,
     private val installUpdateUseCase: InstallUpdateUseCase
 ) : ViewModel() {
-    private var cachedMetaData: UpdateMetaData? = null
+    var cachedMetaData: UpdateMetaData? = null
+        private set
     private var lastUUID: UUID? = null
 
     private val _updateStatus = MutableStateFlow<UpdateStatus>(UpdateStatus.Idle)
@@ -68,11 +69,7 @@ class UpdateViewModel @Inject constructor(
         }
     }
 
-    fun clearInstallStatus() {
-        _updateStatus.value = UpdateStatus.Idle
-    }
-
-    fun clearDownloadStatus() {
+    fun clearUpdateStatus() {
         _updateStatus.value = UpdateStatus.Idle
     }
 
