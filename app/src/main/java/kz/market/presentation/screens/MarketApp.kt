@@ -1,12 +1,10 @@
 package kz.market.presentation.screens
 
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -16,9 +14,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -29,6 +24,7 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import kz.market.presentation.components.UpdateDialog
 import kz.market.presentation.navigation.ApplicationNavGraph
 import kz.market.presentation.navigation.DashboardMain
 import kz.market.presentation.navigation.NavigationBarDestinations
@@ -36,19 +32,14 @@ import kz.market.presentation.navigation.ProductSalesMain
 import kz.market.presentation.navigation.ReportsMain
 import kz.market.presentation.navigation.StorageMain
 import kz.market.presentation.theme.MarketTheme
-import kz.market.utils.update.DownloadProgressDialog
-import kz.market.utils.update.UpdateDialog
-import kz.market.utils.update.UpdateViewModel
+import kz.market.service.utils.UpdateStatus
+import kz.market.service.viewmodel.UpdateViewModel
 
 @Composable
 fun MarketApp() {
     MarketTheme {
-        val context = LocalContext.current
-
         val updateViewModel: UpdateViewModel = hiltViewModel()
-        val info by updateViewModel.updateInfo.collectAsState()
-        var showUpdateDialog by remember { mutableStateOf(true) }
-        var showDownloadProgressDialog by remember { mutableStateOf(false) }
+        val updateDownloadStatus by updateViewModel.updateStatus.collectAsState()
 
         val rootNavController = rememberNavController()
         val currentBackStack by rootNavController.currentBackStackEntryAsState()
@@ -112,34 +103,22 @@ fun MarketApp() {
                 navController = rootNavController
             )
 
-            if (info != null && showUpdateDialog) {
-                UpdateDialog(
-                    info = info!!,
-                    onConfirm = {
-                        updateViewModel.startUpdateFlow(info!!)
-                        showUpdateDialog = false
-                        showDownloadProgressDialog = true
-                    },
-                    onDismiss = {
-                        updateViewModel.dismissDialog()
-                        showUpdateDialog = false
-                    }
-                )
-            }
+            when(updateDownloadStatus) {
+                is UpdateStatus.Downloading,
+                is UpdateStatus.DownloadComplete,
+                is UpdateStatus.Installing,
+                is UpdateStatus.InstallPending,
+                is UpdateStatus.Error,
+                is UpdateStatus.UpdateAvailable -> {
+                    UpdateDialog(
+                        updateStatus = updateDownloadStatus,
+                        onUpdateInstall = updateViewModel::installUpdate,
+                        onConfirm = updateViewModel::startUpdateProcess,
+                        onDismiss = {}
+                    )
+                }
 
-            if (showDownloadProgressDialog) {
-                DownloadProgressDialog(
-                    progress = updateViewModel.progress,
-                    connectionError = updateViewModel.networkError,
-                    onCompleted = {
-                        showDownloadProgressDialog = false
-                    }
-                )
-            }
-
-            if (updateViewModel.downloadingCanceled) {
-                showUpdateDialog = false
-                showDownloadProgressDialog = false
+                else -> Unit
             }
         }
     }

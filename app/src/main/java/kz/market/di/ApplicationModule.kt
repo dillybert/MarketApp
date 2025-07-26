@@ -1,6 +1,7 @@
 package kz.market.di
 
 import android.content.Context
+import androidx.work.WorkManager
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.Module
 import dagger.Provides
@@ -11,12 +12,16 @@ import kz.market.data.repository.ProductRepositoryImpl
 import kz.market.data.repository.SupplierSuggestionRepositoryImpl
 import kz.market.domain.repository.ProductRepository
 import kz.market.domain.repository.SupplierSuggestionRepository
-import kz.market.utils.update.UpdateManager
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 object ApplicationModule {
+    @Provides
+    @Singleton
+    fun provideWorkManager(@ApplicationContext context: Context): WorkManager {
+        return WorkManager.getInstance(context)
+    }
 
     @Provides
     @Singleton
@@ -33,9 +38,4 @@ object ApplicationModule {
     fun provideSupplierSuggestionRepository(
         impl: SupplierSuggestionRepositoryImpl
     ): SupplierSuggestionRepository = impl
-
-    @Provides
-    @Singleton
-    fun provideUpdateManager(@ApplicationContext context: Context): UpdateManager =
-        UpdateManager(context, repoOwner = "dillybert", repoName = "MarketApp")
 }

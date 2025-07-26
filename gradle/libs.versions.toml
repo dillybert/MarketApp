@@ -35,6 +35,9 @@ daggerHiltNavigationVersion = "1.2.0"
 # KSP
 kspVersion = "2.1.21-2.0.1"
 
+# WorkManager
+workManagerVersion = "2.9.0"
+
 # Navigation
 navigationVersion = "2.9.0"
 
@@ -82,6 +85,9 @@ compose-charts = { group = "io.github.ehsannarmani", name = "compose-charts", ve
 
 # Navigation
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationVersion" }
+
+# WorkManager
+androidx-work = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManagerVersion" }
 
 #Dagger Hilt
 dagger-hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "daggerHiltVersion" }
