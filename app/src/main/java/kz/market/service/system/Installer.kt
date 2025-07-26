@@ -25,6 +25,7 @@ class Installer @Inject constructor(
 
     val actionInstallResult: String = "${context.packageName}.UPDATE_INSTALL_RESULT"
     private var pendingApkFile: File? = null
+    private var receiverRegistered = false
 
     fun install(apkFile: File) {
         try {
@@ -66,6 +67,7 @@ class Installer @Inject constructor(
                 IntentFilter(actionInstallResult),
                 ContextCompat.RECEIVER_NOT_EXPORTED
             )
+            receiverRegistered = true
 
             session.commit(pendingIntent.intentSender)
             session.close()
@@ -85,6 +87,7 @@ class Installer @Inject constructor(
             when (status) {
                 PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                     val confirmIntent = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
+
                     if (confirmIntent != null) {
                         _installStatus.tryEmit(UpdateStatus.InstallPending)
                         confirmIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -114,7 +117,11 @@ class Installer @Inject constructor(
                 }
                 pendingApkFile = null
             }
-            context.unregisterReceiver(this)
+
+            if (receiverRegistered) {
+                context.unregisterReceiver(this)
+                receiverRegistered = false
+            }
         }
     }
 }

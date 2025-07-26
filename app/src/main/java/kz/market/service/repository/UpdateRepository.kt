@@ -59,8 +59,8 @@ class UpdateRepository @Inject constructor(
                     WorkInfo.State.ENQUEUED -> {}
                     WorkInfo.State.RUNNING -> {
                         val progress = workInfo.progress.getInt("progress", 0)
-                        val downloaded = workInfo.progress.getLong("downloaded", 0)
-                        val contentSize = workInfo.progress.getLong("content_size", 0)
+                        val downloaded = workInfo.progress.getLong("downloadedBytes", 0)
+                        val contentSize = workInfo.progress.getLong("totalBytes", 0)
                         emit(UpdateStatus.Downloading(contentSize, progress, downloaded))
                     }
                     WorkInfo.State.SUCCEEDED -> {

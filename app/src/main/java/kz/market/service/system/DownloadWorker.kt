@@ -2,8 +2,6 @@ package kz.market.service.system
 
 import android.content.Context
 import android.os.Environment
-import androidx.core.content.FileProvider
-import androidx.core.net.toUri
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
@@ -14,9 +12,7 @@ import okhttp3.Request
 import okio.IOException
 import java.io.File
 import java.io.FileOutputStream
-import androidx.core.content.edit
 import java.io.BufferedOutputStream
-import javax.inject.Inject
 
 class DownloadWorker(
     ctx: Context,
@@ -50,7 +46,7 @@ class DownloadWorker(
                 if (!response.isSuccessful) return@withContext Result.failure()
 
                 val body = response.body
-                val contentLength = body.contentLength()
+                val totalBytes = body.contentLength()
 
                 body.byteStream()
                     .buffered(64 * 1024)              // буфер 64 КБ на чтение
@@ -60,20 +56,20 @@ class DownloadWorker(
                             64 * 1024                  // буфер 64 КБ на запись
                         ).use { output ->
                             val buffer = ByteArray(8 * 1024)
-                            var downloaded = 0L
+                            var downloadedBytes = 0L
                             var read: Int
 
                             var lastProgress = -1
                             while (input.read(buffer).also { read = it } != -1) {
                                 output.write(buffer, 0, read)
-                                downloaded += read
-                                val progress = (downloaded * 100 / contentLength).toInt().coerceIn(0, 100)
+                                downloadedBytes += read
+                                val progress = (downloadedBytes * 100 / totalBytes).toInt().coerceIn(0, 100)
                                 if (progress != lastProgress) {
                                     lastProgress = progress
                                     setProgress(workDataOf(
                                             "progress" to progress,
-                                            "downloaded" to downloaded,
-                                            "content_size" to contentLength
+                                            "downloadedBytes" to downloadedBytes,
+                                            "totalBytes" to totalBytes
                                         )
                                     )
                                 }
