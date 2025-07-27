@@ -8,15 +8,18 @@ data class UpdateMetaData(
     val remoteVersionTag: String,
     val currentVersionTag: String,
     val apkUrl: String,
+    val digest: String,
     val description: String
 ) : Parcelable {
 
     fun isEmpty() = this == EMPTY
+
     companion object {
         val EMPTY = UpdateMetaData(
             remoteVersionTag = "",
             currentVersionTag = "",
             apkUrl = "",
+            digest = "",
             description = ""
         )
     }

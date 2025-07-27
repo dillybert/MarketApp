@@ -12,7 +12,9 @@ import kz.market.service.usecase.GetDownloadWorkRequestUUIDUseCase
 import kz.market.service.usecase.GetUpdateMetaDataUseCase
 import kz.market.service.usecase.InstallUpdateUseCase
 import kz.market.service.usecase.ObserveDownloadProgressUseCase
+import kz.market.service.utils.UpdateDefaults
 import kz.market.service.utils.UpdateStatus
+import kz.market.utils.SharedPrefs
 import java.io.File
 import java.util.UUID
 import javax.inject.Inject
@@ -26,13 +28,21 @@ class UpdateViewModel @Inject constructor(
 ) : ViewModel() {
     var cachedMetaData: UpdateMetaData? = null
         private set
+
     private var lastUUID: UUID? = null
 
     private val _updateStatus = MutableStateFlow<UpdateStatus>(UpdateStatus.Idle)
     val updateStatus: StateFlow<UpdateStatus> = _updateStatus.asStateFlow()
 
     init {
-        checkForUpdates()
+        SharedPrefs.get(UpdateDefaults.KEY_UPDATE_INSTALLED, false).run {
+            if (this@run) {
+                _updateStatus.value = UpdateStatus.InstallSuccess
+                SharedPrefs.remove(UpdateDefaults.KEY_UPDATE_INSTALLED)
+            } else {
+                checkForUpdates()
+            }
+        }
     }
 
     fun checkForUpdates() {
@@ -59,8 +69,8 @@ class UpdateViewModel @Inject constructor(
         }
     }
 
-    fun installUpdate(apkFile: File) {
-        installUpdateUseCase.install(apkFile)
+    fun installUpdate(apkFile: File, digest: String?) {
+        installUpdateUseCase.install(apkFile, digest)
 
         viewModelScope.launch {
             installUpdateUseCase.observeStatus().collect { status ->

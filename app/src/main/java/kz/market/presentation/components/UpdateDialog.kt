@@ -19,11 +19,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -88,7 +91,7 @@ fun Long.formatFileSize(): String {
 @Composable
 fun UpdateDialog(
     updateStatus: UpdateStatus,
-    onUpdateInstall: (apkFile: File) -> Unit,
+    onUpdateInstall: (apkFile: File, digest: String?) -> Unit,
     confirmButton: @Composable () -> Unit,
     dismissButton: @Composable () -> Unit,
     onDismiss: () -> Unit,
@@ -96,7 +99,7 @@ fun UpdateDialog(
 ) {
     LaunchedEffect(updateStatus) {
         if (updateStatus is UpdateStatus.DownloadComplete) {
-            onUpdateInstall(updateStatus.apkFile)
+            onUpdateInstall(updateStatus.apkFile, updateStatus.digest)
         }
     }
 
@@ -112,6 +115,46 @@ fun UpdateDialog(
     )
 
     when (val data = updateStatus) {
+        is UpdateStatus.InstallSuccess -> {
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(56.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                title = {
+                    Text(
+                        text = "Установка завершена",
+                        textAlign = TextAlign.Center
+                    )
+                },
+                text = {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(15.dp)
+                    ) {
+                        Text(
+                            text = "Установка прошла успешно.",
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = onDismiss
+                    ) {
+                        Text(text = "OK")
+                    }
+                },
+                dismissButton = {},
+                shape = shape
+            )
+        }
+
         is UpdateStatus.Downloading -> {
             AlertDialog(
                 onDismissRequest = onDismiss,
@@ -147,7 +190,8 @@ fun UpdateDialog(
                             ) {
                                 Text(
                                     text = "${data.downloadedBytes.formatFileSize()} из ${data.totalBytes.formatFileSize()}",
-                                    style = MaterialTheme.typography.bodySmall
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(5.dp),
@@ -201,7 +245,7 @@ fun UpdateDialog(
                     },
                     title = {
                         Text(
-                            text = "Обновление отменено",
+                            text = "Установка отменена",
                             textAlign = TextAlign.Center
                         )
                     },

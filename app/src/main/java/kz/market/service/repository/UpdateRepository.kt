@@ -2,7 +2,6 @@ package kz.market.service.repository
 
 import android.content.Context
 import androidx.lifecycle.asFlow
-import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
@@ -16,10 +15,10 @@ import kotlinx.coroutines.flow.flow
 import kz.market.service.manager.UpdateManager
 import kz.market.service.model.UpdateMetaData
 import kz.market.service.system.DownloadWorker
+import kz.market.service.utils.UpdateDefaults
 import kz.market.service.utils.UpdateStatus
 import java.io.File
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 class UpdateRepository @Inject constructor(
@@ -35,17 +34,12 @@ class UpdateRepository @Inject constructor(
             .build()
 
         val workRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
-            .setInputData(workDataOf("apk_url" to updateMetaData.apkUrl))
+            .setInputData(workDataOf(UpdateDefaults.KEY_APK_URL to updateMetaData.apkUrl))
             .setConstraints(constraints = constraints)
-            .setBackoffCriteria(
-                BackoffPolicy.EXPONENTIAL,
-                10,
-                TimeUnit.SECONDS
-            )
             .build()
 
         WorkManager.getInstance(context).enqueueUniqueWork(
-            "market_download_update", ExistingWorkPolicy.REPLACE, workRequest
+            UpdateDefaults.UNIQUE_WORK_NAME, ExistingWorkPolicy.REPLACE, workRequest
         )
 
         return workRequest.id
@@ -56,15 +50,16 @@ class UpdateRepository @Inject constructor(
             .asFlow()
             .collect { workInfo ->
                 when (workInfo.state) {
-                    WorkInfo.State.ENQUEUED -> {}
+                    WorkInfo.State.ENQUEUED,
                     WorkInfo.State.RUNNING -> {
-                        val progress = workInfo.progress.getInt("progress", 0)
-                        val downloaded = workInfo.progress.getLong("downloadedBytes", 0)
-                        val contentSize = workInfo.progress.getLong("totalBytes", 0)
+                        val progress = workInfo.progress.getInt(UpdateDefaults.KEY_PROGRESS, 0)
+                        val downloaded = workInfo.progress.getLong(UpdateDefaults.KEY_DOWNLOADED_BYTES, 0)
+                        val contentSize = workInfo.progress.getLong(UpdateDefaults.KEY_TOTAL_BYTES, 0)
+
                         emit(UpdateStatus.Downloading(contentSize, progress, downloaded))
                     }
                     WorkInfo.State.SUCCEEDED -> {
-                        val apkFile = workInfo.outputData.getString("apk_file_path")
+                        val apkFile = workInfo.outputData.getString(UpdateDefaults.KEY_APK_FILE_PATH)
 
                         if (apkFile != null) {
                             emit(UpdateStatus.DownloadComplete(File(apkFile)))
@@ -73,15 +68,14 @@ class UpdateRepository @Inject constructor(
                         }
                     }
 
+                    WorkInfo.State.BLOCKED,
+                    WorkInfo.State.CANCELLED,
                     WorkInfo.State.FAILED -> {
-                        val error = workInfo.outputData.getString("error")
+                        val error = workInfo.outputData.getString(UpdateDefaults.KEY_ERROR)
                         error?.let {
                             emit(UpdateStatus.Error(message = it))
                         }
                     }
-
-                    WorkInfo.State.BLOCKED -> {}
-                    WorkInfo.State.CANCELLED -> {}
                 }
             }
     }

@@ -7,7 +7,7 @@ sealed class UpdateStatus {
     object Idle : UpdateStatus()
     data class UpdateAvailable(val updateMetaData: UpdateMetaData) : UpdateStatus()
     data class Downloading(val totalBytes: Long, val progress: Int, val downloadedBytes: Long) : UpdateStatus()
-    data class DownloadComplete(val apkFile: File) : UpdateStatus()
+    data class DownloadComplete(val apkFile: File, val digest: String? = null) : UpdateStatus()
     object Installing : UpdateStatus()
     object InstallPending : UpdateStatus()
     object InstallSuccess : UpdateStatus()
