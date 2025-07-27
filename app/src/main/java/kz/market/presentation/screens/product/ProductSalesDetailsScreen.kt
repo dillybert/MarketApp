@@ -1,9 +1,13 @@
 package kz.market.presentation.screens.product
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -15,13 +19,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import kz.market.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProductSalesDetailsScreen(id: Int) {
+fun ProductSalesDetailsScreen() {
 
     Scaffold(
         topBar = {
@@ -29,40 +35,39 @@ fun ProductSalesDetailsScreen(id: Int) {
                 title = {
                     Text(text = "Product Sales Details")
                 },
-                actions = {
-                    IconButton(
-                        onClick = {}
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_package_add),
-                            contentDescription = "Package"
-                        )
-                    }
-
-                    IconButton(
-                        onClick = {}
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_package_add),
-                            contentDescription = "Package"
-                        )
-                    }
-                }
             )
         }
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "Product Sales\nDetails $id",
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.displaySmall
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Build,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(64.dp)
+                )
+
+                Text(
+                    text = "Раздел в разработке",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+
+                Text(
+                    text = "Этот функционал появится в следующих версиях приложения.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 }
@@ -74,5 +79,5 @@ fun ProductSalesDetailsScreen(id: Int) {
 )
 @Composable
 private fun ProductSalesDetailsScreenPreview() {
-    ProductSalesDetailsScreen(12)
+    ProductSalesDetailsScreen()
 }

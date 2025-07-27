@@ -28,7 +28,7 @@ jobs:
         env:
           SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
         run: |
-          echo "$SIGNING_KEYSTORE_BASE64" | base64 --decode > release.keystore
+          echo "$SIGNING_KEYSTORE_BASE64" | base64 --decode > app/release.keystore
 
       - name: Gradle Wrapper permissions
         run: chmod +x ./gradlew

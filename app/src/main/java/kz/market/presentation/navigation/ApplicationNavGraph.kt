@@ -33,7 +33,7 @@ interface ApplicationDestination
 @Serializable @Keep object DashboardDetails : ApplicationDestination
 
 @Serializable @Keep object ProductSalesMain : ApplicationDestination
-@Serializable @Keep data class ProductSalesDetails(val id: Int) : ApplicationDestination
+@Serializable @Keep object ProductSalesDetails : ApplicationDestination
 
 @Serializable @Keep object ReportsMain : ApplicationDestination
 @Serializable @Keep object ReportsDetails : ApplicationDestination
@@ -67,18 +67,10 @@ fun ApplicationNavGraph(
             )
         }
         composable<ProductSalesMain> {
-            ProductSalesScreen(
-                onDetailsClick = { id ->
-                    navController.navigate(ProductSalesDetails(id))
-                }
-            )
+            ProductSalesScreen()
         }
         composable<ReportsMain> {
-            ReportsScreen(
-                onDetailsClick = {
-                    navController.navigate(ReportsDetails)
-                }
-            )
+            ReportsScreen()
         }
         composable<StorageMain> {
             StorageScreen(
@@ -106,9 +98,8 @@ fun NavGraphBuilder.detailsNavGraph(
         composable<DashboardDetails> {
             DashboardDetailsScreen()
         }
-        composable<ProductSalesDetails> { entry ->
-            val productSalesDetailsId = entry.toRoute<ProductSalesDetails>()
-            ProductSalesDetailsScreen(productSalesDetailsId.id)
+        composable<ProductSalesDetails> {
+            ProductSalesDetailsScreen()
         }
         composable<ReportsDetails> {
             ReportsDetailsScreen()
