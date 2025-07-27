@@ -12,7 +12,9 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kz.market.service.utils.UpdateDefaults
 import kz.market.service.utils.UpdateStatus
+import kz.market.utils.SharedPrefs
 import java.io.File
 import java.io.FileInputStream
 import javax.inject.Inject
@@ -27,8 +29,22 @@ class Installer @Inject constructor(
     private var pendingApkFile: File? = null
     private var receiverRegistered = false
 
-    fun install(apkFile: File) {
+    fun install(apkFile: File, digest: String?) {
         try {
+            if (digest != null) {
+                val expectedSHA256 = digest.removePrefix("sha256:").lowercase()
+                val calculatedSHA256 = calculateSHA256(apkFile).lowercase()
+
+                if (expectedSHA256 != calculatedSHA256) {
+                    _installStatus.tryEmit(
+                        UpdateStatus.Error(
+                            "Invalid SHA-256 digest. APK may be tampered"
+                        )
+                    )
+                    return
+                }
+            }
+
             pendingApkFile = apkFile
             _installStatus.tryEmit(UpdateStatus.Installing)
 
@@ -41,7 +57,11 @@ class Installer @Inject constructor(
             val session = packageInstaller.openSession(sessionId)
 
             FileInputStream(apkFile).use { inputStream ->
-                session.openWrite("update.apk", 0, apkFile.length()).use { outputStream ->
+                session.openWrite(
+                    "update.apk",
+                    0,
+                    apkFile.length()
+                ).use { outputStream ->
                     inputStream.copyTo(outputStream)
                     session.fsync(outputStream)
                 }
@@ -78,6 +98,20 @@ class Installer @Inject constructor(
         }
     }
 
+    private fun calculateSHA256(file: File): String {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { fis ->
+            val buffer = ByteArray(8192)
+            var read: Int
+            while (fis.read(buffer).also { read = it } > 0) {
+                digest.update(buffer, 0, read)
+            }
+        }
+
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+
     private val installResultReceiver = object : BroadcastReceiver() {
         @SuppressLint("UnsafeIntentLaunch")
         override fun onReceive(context: Context, intent: Intent) {
@@ -94,12 +128,16 @@ class Installer @Inject constructor(
                         context.startActivity(confirmIntent)
                         return
                     } else {
-                        _installStatus.tryEmit(UpdateStatus.Error("User action required but intent is null"))
+                        _installStatus.tryEmit(
+                            UpdateStatus.Error(
+                                "User action required but intent is null"
+                            )
+                        )
                     }
                 }
 
                 PackageInstaller.STATUS_SUCCESS -> {
-                    _installStatus.tryEmit(UpdateStatus.InstallSuccess)
+                    SharedPrefs.set(UpdateDefaults.KEY_UPDATE_INSTALLED, true)
                     cleanUp()
                 }
 

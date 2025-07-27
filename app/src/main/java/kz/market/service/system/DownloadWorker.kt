@@ -7,12 +7,13 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kz.market.service.utils.UpdateDefaults
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okio.IOException
+import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
-import java.io.BufferedOutputStream
 
 class DownloadWorker(
     ctx: Context,
@@ -22,7 +23,7 @@ class DownloadWorker(
     params = params
 ) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        val apkUrl = inputData.getString("apk_url") ?: return@withContext Result.failure()
+        val apkUrl = inputData.getString(UpdateDefaults.KEY_APK_URL) ?: return@withContext Result.failure()
         val file = File(
             applicationContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
             "update.apk"
@@ -63,13 +64,15 @@ class DownloadWorker(
                             while (input.read(buffer).also { read = it } != -1) {
                                 output.write(buffer, 0, read)
                                 downloadedBytes += read
+
                                 val progress = (downloadedBytes * 100 / totalBytes).toInt().coerceIn(0, 100)
                                 if (progress != lastProgress) {
                                     lastProgress = progress
-                                    setProgress(workDataOf(
-                                            "progress" to progress,
-                                            "downloadedBytes" to downloadedBytes,
-                                            "totalBytes" to totalBytes
+                                    setProgress(
+                                        workDataOf(
+                                        UpdateDefaults.KEY_PROGRESS to progress,
+                                            UpdateDefaults.KEY_DOWNLOADED_BYTES to downloadedBytes,
+                                            UpdateDefaults.KEY_TOTAL_BYTES to totalBytes
                                         )
                                     )
                                 }
@@ -81,13 +84,15 @@ class DownloadWorker(
 
             return@withContext Result.success(
                 workDataOf(
-                    "apk_file_path" to file.absolutePath
+                    UpdateDefaults.KEY_APK_FILE_PATH to file.absolutePath
                 )
             )
         } catch (e: IOException) {
+            if (file.exists()) file.delete()
+
             if (e.message?.contains("ENOSPC") == true) {
                 return@withContext Result.failure(
-                    workDataOf("error" to "No space left on device")
+                    workDataOf(UpdateDefaults.KEY_ERROR to "No space left on device")
                 )
             }
 
