@@ -44,7 +44,13 @@ class UpdateManager @Inject constructor(
             val digest = asset.getString("digest")
             val description = json.optString("body")
 
-            return@withContext UpdateMetaData(remoteVersionTag, getCurrentVersionTag(), apkUrl, digest, description)
+            return@withContext UpdateMetaData(
+                remoteVersionTag = remoteVersionTag,
+                currentVersionTag = getCurrentVersionTag(),
+                apkUrl = apkUrl,
+                digest = digest,
+                description = description
+            )
         } catch (e: Exception) {
             Log.e("UpdateManager", "Error getting update metadata", e)
             return@withContext UpdateMetaData.EMPTY
