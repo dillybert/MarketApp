@@ -27,7 +27,6 @@ class Installer @Inject constructor(
 
     val actionInstallResult: String = "${context.packageName}.UPDATE_INSTALL_RESULT"
     private var pendingApkFile: File? = null
-    private var receiverRegistered = false
 
     fun install(apkFile: File, digest: String?) {
         try {
@@ -81,14 +80,6 @@ class Installer @Inject constructor(
                     PendingIntent.FLAG_UPDATE_CURRENT
             )
 
-            ContextCompat.registerReceiver(
-                context,
-                installResultReceiver,
-                IntentFilter(actionInstallResult),
-                ContextCompat.RECEIVER_NOT_EXPORTED
-            )
-            receiverRegistered = true
-
             session.commit(pendingIntent.intentSender)
             session.close()
         } catch (e: Exception) {
@@ -109,57 +100,5 @@ class Installer @Inject constructor(
         }
 
         return digest.digest().joinToString("") { "%02x".format(it) }
-    }
-
-
-    private val installResultReceiver = object : BroadcastReceiver() {
-        @SuppressLint("UnsafeIntentLaunch")
-        override fun onReceive(context: Context, intent: Intent) {
-            val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -1)
-            val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
-
-            when (status) {
-                PackageInstaller.STATUS_PENDING_USER_ACTION -> {
-                    val confirmIntent = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
-
-                    if (confirmIntent != null) {
-                        _installStatus.tryEmit(UpdateStatus.InstallPending)
-                        confirmIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        context.startActivity(confirmIntent)
-                        return
-                    } else {
-                        _installStatus.tryEmit(
-                            UpdateStatus.Error(
-                                "User action required but intent is null"
-                            )
-                        )
-                    }
-                }
-
-                PackageInstaller.STATUS_SUCCESS -> {
-                    SharedPrefs.set(UpdateDefaults.KEY_UPDATE_INSTALLED, true)
-                    cleanUp()
-                }
-
-                else -> {
-                    _installStatus.tryEmit(UpdateStatus.Error(message))
-                    cleanUp()
-                }
-            }
-        }
-
-        private fun cleanUp() {
-            pendingApkFile?.let {
-                if (it.delete().not()) {
-                    Log.d("Installer", "Failed to delete update file")
-                }
-                pendingApkFile = null
-            }
-
-            if (receiverRegistered) {
-                context.unregisterReceiver(this)
-                receiverRegistered = false
-            }
-        }
     }
 }

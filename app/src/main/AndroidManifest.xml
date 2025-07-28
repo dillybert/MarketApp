@@ -46,10 +46,10 @@
         </provider>
 
         <receiver
-            android:name=".utils.update.DownloadCompleteReceiver"
+            android:name=".service.system.InstallResultReceiver"
             android:exported="true">
             <intent-filter>
-                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
+                <action android:name="${applicationId}.UPDATE_INSTALL_RESULT" />
             </intent-filter>
         </receiver>
     </application>
