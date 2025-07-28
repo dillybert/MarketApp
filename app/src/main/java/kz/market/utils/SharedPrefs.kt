@@ -6,52 +6,65 @@ import androidx.core.content.edit
 
 object SharedPrefs {
     private const val PREFS_NAME = "market_pref"
-    private lateinit var prefs: SharedPreferences
+    lateinit var prefs: SharedPreferences
+        private set
 
     fun init(context: Context) {
-        prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
-    fun <T> set(key: String, value: T) {
-        prefs.edit {
-            when (value) {
-                is String -> putString(key, value)
-                is Int -> putInt(key, value)
-                is Long -> putLong(key, value)
-                is Float -> putFloat(key, value)
-                is Boolean -> putBoolean(key, value)
-                is Set<*> -> {
+    inline fun <reified T> set(key: String, value: T) {
+        prefs.edit(commit = true) {
+            when (T::class) {
+                String::class  -> putString(key, value as String)
+                Int::class     -> putInt(key, value as Int)
+                Long::class    -> putLong(key, value as Long)
+                Float::class   -> putFloat(key, value as Float)
+                Boolean::class -> putBoolean(key, value as Boolean)
+                Set::class     -> {
                     @Suppress("UNCHECKED_CAST")
-                    putStringSet(key, value as? Set<String>)
+                    putStringSet(key, value as Set<String>)
                 }
-                else -> throw IllegalArgumentException("Unsupported type: ${value?.javaClass}")
+                else           -> error("Unsupported type ${T::class}")
             }
-            apply()
         }
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun <T> get(key: String, default: T): T {
-        return when (default) {
-            is String -> prefs.getString(key, default) as T
-            is Int -> prefs.getInt(key, default) as T
-            is Long -> prefs.getLong(key, default) as T
-            is Float -> prefs.getFloat(key, default) as T
-            is Boolean -> prefs.getBoolean(key, default) as T
-            is Set<*> -> prefs.getStringSet(key, default as? Set<String>) as T
-            else -> throw IllegalArgumentException("Unsupported type: ${default?.javaClass}")
+    inline fun <reified T> get(key: String, default: T): T = with(prefs) {
+        when (T::class) {
+            String::class  -> getString(key, default as String) as T
+            Int::class     -> getInt(key, default as Int) as T
+            Long::class    -> getLong(key, default as Long) as T
+            Float::class   -> getFloat(key, default as Float) as T
+            Boolean::class -> getBoolean(key, default as Boolean) as T
+            Set::class     -> getStringSet(key, default as Set<String>) as T
+            else           -> error("Unsupported type ${T::class}")
         }
     }
 
+
     fun remove(key: String) {
-        prefs.edit { remove(key) }
+        if (!this::prefs.isInitialized) {
+            throw IllegalStateException("SharedPreferences not initialized")
+        }
+
+        prefs.edit(commit = true) { remove(key) }
     }
 
     fun contains(key: String): Boolean {
+        if (!this::prefs.isInitialized) {
+            throw IllegalStateException("SharedPreferences not initialized")
+        }
+
         return prefs.contains(key)
     }
 
     fun clear() {
-        prefs.edit { clear() }
+        if (!this::prefs.isInitialized) {
+            throw IllegalStateException("SharedPreferences not initialized")
+        }
+
+        prefs.edit(commit = true) { clear() }
     }
 }
