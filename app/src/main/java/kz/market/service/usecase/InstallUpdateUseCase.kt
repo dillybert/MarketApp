@@ -9,7 +9,5 @@ import javax.inject.Inject
 class InstallUpdateUseCase @Inject constructor(
     private val installer: Installer,
 ) {
-    fun install(apkFile: File, digest: String?) = installer.install(apkFile, digest)
-
-    fun observeStatus(): SharedFlow<UpdateStatus> = installer.installStatus
+    operator fun invoke(apkFile: File, digest: String?) = installer.install(apkFile, digest)
 }

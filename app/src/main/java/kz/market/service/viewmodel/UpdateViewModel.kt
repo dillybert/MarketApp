@@ -13,6 +13,7 @@ import kz.market.service.usecase.GetUpdateMetaDataUseCase
 import kz.market.service.usecase.InstallUpdateUseCase
 import kz.market.service.usecase.ObserveDownloadProgressUseCase
 import kz.market.service.utils.UpdateDefaults
+import kz.market.service.utils.UpdateEventBus
 import kz.market.service.utils.UpdateStatus
 import kz.market.utils.SharedPrefs
 import java.io.File
@@ -70,10 +71,10 @@ class UpdateViewModel @Inject constructor(
     }
 
     fun installUpdate(apkFile: File, digest: String?) {
-        installUpdateUseCase.install(apkFile, digest)
+        installUpdateUseCase(apkFile, digest)
 
         viewModelScope.launch {
-            installUpdateUseCase.observeStatus().collect { status ->
+            UpdateEventBus.installStatus.collect { status ->
                 _updateStatus.value = status
             }
         }

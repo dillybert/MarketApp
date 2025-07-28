@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kz.market.service.utils.UpdateDefaults
+import kz.market.service.utils.UpdateEventBus
 import kz.market.service.utils.UpdateStatus
 import kz.market.utils.SharedPrefs
 import java.io.File
@@ -22,9 +23,6 @@ import javax.inject.Inject
 class Installer @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    private val _installStatus = MutableSharedFlow<UpdateStatus>(replay = 1)
-    val installStatus: MutableSharedFlow<UpdateStatus> = _installStatus
-
     val actionInstallResult: String = "${context.packageName}.UPDATE_INSTALL_RESULT"
     private var pendingApkFile: File? = null
 
@@ -35,7 +33,7 @@ class Installer @Inject constructor(
                 val calculatedSHA256 = calculateSHA256(apkFile).lowercase()
 
                 if (expectedSHA256 != calculatedSHA256) {
-                    _installStatus.tryEmit(
+                    UpdateEventBus.setInstallStatus(
                         UpdateStatus.Error(
                             "Invalid SHA-256 digest. APK may be tampered"
                         )
@@ -45,7 +43,7 @@ class Installer @Inject constructor(
             }
 
             pendingApkFile = apkFile
-            _installStatus.tryEmit(UpdateStatus.Installing)
+            UpdateEventBus.setInstallStatus(UpdateStatus.Installing)
 
             val packageInstaller = context.packageManager.packageInstaller
             val params = PackageInstaller.SessionParams(
@@ -85,7 +83,7 @@ class Installer @Inject constructor(
         } catch (e: Exception) {
             pendingApkFile?.delete()
             pendingApkFile = null
-            _installStatus.tryEmit(UpdateStatus.Error(e.message))
+            UpdateEventBus.setInstallStatus(UpdateStatus.Error(e.message))
         }
     }
 
