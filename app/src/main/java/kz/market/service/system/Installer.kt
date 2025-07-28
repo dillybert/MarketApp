@@ -1,49 +1,47 @@
 package kz.market.service.system
 
-import android.annotation.SuppressLint
 import android.app.PendingIntent
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageInstaller
 import android.os.Build
 import android.util.Log
-import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kz.market.service.utils.UpdateDefaults
 import kz.market.service.utils.UpdateEventBus
 import kz.market.service.utils.UpdateStatus
-import kz.market.utils.SharedPrefs
 import java.io.File
 import java.io.FileInputStream
 import javax.inject.Inject
 
 class Installer @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val updateEventBus: UpdateEventBus
 ) {
     val actionInstallResult: String = "${context.packageName}.UPDATE_INSTALL_RESULT"
     private var pendingApkFile: File? = null
 
     fun install(apkFile: File, digest: String?) {
         try {
-            if (digest != null) {
-                val expectedSHA256 = digest.removePrefix("sha256:").lowercase()
-                val calculatedSHA256 = calculateSHA256(apkFile).lowercase()
+            if (digest == null) {
+                updateEventBus.emit(UpdateStatus.Error("Invalid SHA-256 digest. SUM is null"))
+                Log.e("Installer", "Invalid SHA-256 digest. SUM is null: $digest")
+                return
+            }
 
-                if (expectedSHA256 != calculatedSHA256) {
-                    UpdateEventBus.setInstallStatus(
-                        UpdateStatus.Error(
-                            "Invalid SHA-256 digest. APK may be tampered"
-                        )
+            val expectedSHA256 = digest.removePrefix("sha256:").lowercase()
+            val calculatedSHA256 = calculateSHA256(apkFile).lowercase()
+
+            if (expectedSHA256 != calculatedSHA256) {
+                updateEventBus.emit(
+                    UpdateStatus.Error(
+                        "Invalid SHA-256 digest. APK may be tampered"
                     )
-                    return
-                }
+                )
+                return
             }
 
             pendingApkFile = apkFile
-            UpdateEventBus.setInstallStatus(UpdateStatus.Installing)
+            updateEventBus.emit(UpdateStatus.Installing)
 
             val packageInstaller = context.packageManager.packageInstaller
             val params = PackageInstaller.SessionParams(
@@ -83,7 +81,7 @@ class Installer @Inject constructor(
         } catch (e: Exception) {
             pendingApkFile?.delete()
             pendingApkFile = null
-            UpdateEventBus.setInstallStatus(UpdateStatus.Error(e.message))
+            updateEventBus.emit(UpdateStatus.Error(e.message))
         }
     }
 

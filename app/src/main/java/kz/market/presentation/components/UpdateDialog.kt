@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProgressIndicatorDefaults
@@ -29,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +45,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import kz.market.R
+import kz.market.service.utils.UpdateEventBus
 import kz.market.service.utils.UpdateStatus
 import java.io.File
 import kotlin.math.log10
@@ -90,16 +93,21 @@ fun Long.formatFileSize(): String {
 
 @Composable
 fun UpdateDialog(
-    updateStatus: UpdateStatus,
+    updateEventBus: UpdateEventBus,
     onUpdateInstall: (apkFile: File, digest: String?) -> Unit,
-    confirmButton: @Composable () -> Unit,
-    dismissButton: @Composable () -> Unit,
+    onStartUpdateProcess: () -> Unit,
     onDismiss: () -> Unit,
     shape: RoundedCornerShape = RoundedCornerShape(10.dp)
 ) {
+    val updateStatus by updateEventBus.events.collectAsState(initial = UpdateStatus.Idle)
+
     LaunchedEffect(updateStatus) {
-        if (updateStatus is UpdateStatus.DownloadComplete) {
-            onUpdateInstall(updateStatus.apkFile, updateStatus.digest)
+        when (val statusData = updateStatus) {
+            is UpdateStatus.DownloadComplete -> {
+                onUpdateInstall(statusData.apkFile, statusData.digest)
+            }
+
+            else -> Unit
         }
     }
 
@@ -114,13 +122,13 @@ fun UpdateDialog(
         label = "rotation"
     )
 
-    when (val data = updateStatus) {
+    when (val statusData = updateStatus) {
         is UpdateStatus.InstallSuccess -> {
             AlertDialog(
                 onDismissRequest = onDismiss,
                 icon = {
                     Icon(
-                        imageVector = Icons.Default.Check,
+                        painter = painterResource(R.drawable.ic_check),
                         contentDescription = null,
                         modifier = Modifier.size(56.dp),
                         tint = MaterialTheme.colorScheme.primary
@@ -189,7 +197,7 @@ fun UpdateDialog(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    text = "${data.downloadedBytes.formatFileSize()} из ${data.totalBytes.formatFileSize()}",
+                                    text = "${statusData.downloadedBytes.formatFileSize()} из ${statusData.totalBytes.formatFileSize()}",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -198,7 +206,7 @@ fun UpdateDialog(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = "${data.progress}%",
+                                        text = "${statusData.progress}%",
                                         style = MaterialTheme.typography.bodySmall,
                                         fontWeight = FontWeight.SemiBold
                                     )
@@ -215,7 +223,7 @@ fun UpdateDialog(
                                 }
                             }
                             LoadingProgressIndicator(
-                                progress = data.progress / 100f,
+                                progress = statusData.progress / 100f,
                                 cornerRadius = 8.dp,
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -231,8 +239,8 @@ fun UpdateDialog(
         }
 
         is UpdateStatus.Error -> {
-            if (data.message?.contains("aborted", ignoreCase = true) == true ||
-                data.message?.contains("cancelled", ignoreCase = true) == true) {
+            if (statusData.message?.contains("aborted", ignoreCase = true) == true ||
+                statusData.message?.contains("cancelled", ignoreCase = true) == true) {
                 AlertDialog(
                     onDismissRequest = onDismiss,
                     icon = {
@@ -261,7 +269,14 @@ fun UpdateDialog(
                         }
                     },
                     confirmButton = {},
-                    dismissButton = dismissButton,
+                    dismissButton = {
+                        TextButton(
+                            onClick = onDismiss,
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(text = "Отмена")
+                        }
+                    },
                     shape = shape
                 )
             } else {
@@ -286,7 +301,7 @@ fun UpdateDialog(
                             verticalArrangement = Arrangement.spacedBy(15.dp)
                         ) {
                             Text(
-                                text = data.message ?: "Неизвестная ошибка при обновлении",
+                                text = statusData.message ?: "Неизвестная ошибка при обновлении",
                                 textAlign = TextAlign.Center,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.error
@@ -294,7 +309,14 @@ fun UpdateDialog(
                         }
                     },
                     confirmButton = {},
-                    dismissButton = dismissButton,
+                    dismissButton = {
+                        TextButton(
+                            onClick = onDismiss,
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(text = "Отмена")
+                        }
+                    },
                     shape = shape
                 )
             }
@@ -374,7 +396,7 @@ fun UpdateDialog(
                             )
 
                             Text(
-                                text = "v${data.updateMetaData.currentVersionTag}",
+                                text = "v${statusData.updateMetaData.currentVersionTag}",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.secondary,
                                 fontWeight = FontWeight.SemiBold,
@@ -396,7 +418,7 @@ fun UpdateDialog(
                             )
 
                             Text(
-                                text = "v${data.updateMetaData.remoteVersionTag}",
+                                text = "v${statusData.updateMetaData.remoteVersionTag}",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.SemiBold,
@@ -408,7 +430,7 @@ fun UpdateDialog(
                             )
                         }
 
-                        if (data.updateMetaData.description.isNotEmpty()) {
+                        if (statusData.updateMetaData.description.isNotEmpty()) {
                             Text(
                                 text = "Что нового:",
                                 style = MaterialTheme.typography.bodyMedium,
@@ -416,7 +438,7 @@ fun UpdateDialog(
                                 modifier = Modifier.padding(top = 8.dp)
                             )
                             Text(
-                                text = data.updateMetaData.description,
+                                text = statusData.updateMetaData.description,
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.padding(top = 4.dp)
                             )
@@ -428,8 +450,22 @@ fun UpdateDialog(
                         )
                     }
                 },
-                confirmButton = confirmButton,
-                dismissButton = dismissButton,
+                confirmButton = {
+                    Button(
+                        onClick = onStartUpdateProcess,
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(text = "Обновить")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(text = "Отмена")
+                    }
+                },
                 shape = shape
             )
         }

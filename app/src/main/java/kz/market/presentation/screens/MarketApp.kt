@@ -41,7 +41,6 @@ import kz.market.service.viewmodel.UpdateViewModel
 fun MarketApp() {
     MarketTheme {
         val updateViewModel: UpdateViewModel = hiltViewModel()
-        val updateStatus by updateViewModel.updateStatus.collectAsState()
 
         val rootNavController = rememberNavController()
         val currentBackStack by rootNavController.currentBackStackEntryAsState()
@@ -106,24 +105,9 @@ fun MarketApp() {
             )
 
             UpdateDialog(
-                updateStatus = updateStatus,
+                updateEventBus = updateViewModel.updateEventBus,
                 onUpdateInstall = updateViewModel::installUpdate,
-                confirmButton = {
-                    Button(
-                        onClick = updateViewModel::startUpdateProcess,
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text(text = "Обновить")
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = updateViewModel::clearUpdateStatus,
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text(text = "Отмена")
-                    }
-                },
+                onStartUpdateProcess = updateViewModel::startUpdateProcess,
                 onDismiss = updateViewModel::clearUpdateStatus
             )
         }

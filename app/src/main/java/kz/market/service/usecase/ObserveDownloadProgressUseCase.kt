@@ -9,5 +9,5 @@ import javax.inject.Inject
 class ObserveDownloadProgressUseCase @Inject constructor(
     private val updateRepository: UpdateRepository,
 ) {
-    operator fun invoke(uuid: UUID): Flow<UpdateStatus> = updateRepository.observeDownload(uuid)
+    operator fun invoke(uuid: UUID) = updateRepository.observeDownload(uuid)
 }

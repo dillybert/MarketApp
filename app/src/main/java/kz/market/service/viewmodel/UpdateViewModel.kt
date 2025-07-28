@@ -3,9 +3,6 @@ package kz.market.service.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kz.market.service.model.UpdateMetaData
 import kz.market.service.usecase.GetDownloadWorkRequestUUIDUseCase
@@ -25,20 +22,18 @@ class UpdateViewModel @Inject constructor(
     private val getUpdateMetaDataUseCase: GetUpdateMetaDataUseCase,
     private val getDownloadWorkRequestUUIDUseCase: GetDownloadWorkRequestUUIDUseCase,
     private val observeDownloadProgressUseCase: ObserveDownloadProgressUseCase,
-    private val installUpdateUseCase: InstallUpdateUseCase
+    private val installUpdateUseCase: InstallUpdateUseCase,
+    val updateEventBus: UpdateEventBus
 ) : ViewModel() {
     var cachedMetaData: UpdateMetaData? = null
         private set
 
     private var lastUUID: UUID? = null
 
-    private val _updateStatus = MutableStateFlow<UpdateStatus>(UpdateStatus.Idle)
-    val updateStatus: StateFlow<UpdateStatus> = _updateStatus.asStateFlow()
-
     init {
         SharedPrefs.get(UpdateDefaults.KEY_UPDATE_INSTALLED, false).run {
             if (this@run) {
-                _updateStatus.value = UpdateStatus.InstallSuccess
+                updateEventBus.emit(UpdateStatus.InstallSuccess)
                 SharedPrefs.remove(UpdateDefaults.KEY_UPDATE_INSTALLED)
             } else {
                 checkForUpdates()
@@ -50,7 +45,7 @@ class UpdateViewModel @Inject constructor(
         viewModelScope.launch {
             val updateMetaData = getUpdateMetaDataUseCase()
             if (updateMetaData.remoteVersionTag != updateMetaData.currentVersionTag) {
-                _updateStatus.value = UpdateStatus.UpdateAvailable(updateMetaData)
+                updateEventBus.emit(UpdateStatus.UpdateAvailable(updateMetaData))
                 cachedMetaData = updateMetaData
             }
         }
@@ -72,24 +67,13 @@ class UpdateViewModel @Inject constructor(
 
     fun installUpdate(apkFile: File, digest: String?) {
         installUpdateUseCase(apkFile, digest)
-
-        viewModelScope.launch {
-            UpdateEventBus.installStatus.collect { status ->
-                _updateStatus.value = status
-            }
-        }
     }
 
     fun clearUpdateStatus() {
-        _updateStatus.value = UpdateStatus.Idle
+        updateEventBus.emit(UpdateStatus.Idle)
     }
 
     private fun observeDownloadProgress(uuid: UUID) {
-        viewModelScope.launch {
-            observeDownloadProgressUseCase(uuid)
-                .collect { status ->
-                    _updateStatus.value = status
-                }
-        }
+        observeDownloadProgressUseCase(uuid)
     }
 }
