@@ -5,15 +5,12 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -21,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -35,12 +31,13 @@ import kz.market.presentation.navigation.ProductSalesMain
 import kz.market.presentation.navigation.ReportsMain
 import kz.market.presentation.navigation.StorageMain
 import kz.market.presentation.theme.MarketTheme
-import kz.market.service.viewmodel.UpdateViewModel
+import kz.market.viewmodel.UpdateViewModel
 
 @Composable
 fun MarketApp() {
     MarketTheme {
         val updateViewModel: UpdateViewModel = hiltViewModel()
+        val updateStatus by updateViewModel.updateStatus.collectAsState()
 
         val rootNavController = rememberNavController()
         val currentBackStack by rootNavController.currentBackStackEntryAsState()
@@ -105,10 +102,10 @@ fun MarketApp() {
             )
 
             UpdateDialog(
-                updateEventBus = updateViewModel.updateEventBus,
+                updateStatus = updateStatus,
                 onUpdateInstall = updateViewModel::installUpdate,
-                onStartUpdateProcess = updateViewModel::startUpdateProcess,
-                onDismiss = updateViewModel::clearUpdateStatus
+                onStartUpdateProcess = updateViewModel::startDownload,
+                onDismiss = updateViewModel::resetUpdateStatus
             )
         }
     }

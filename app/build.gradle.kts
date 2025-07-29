@@ -18,7 +18,7 @@ android {
         minSdk = 24
         targetSdk = 35
         versionCode = 1
-        versionName = "2.5-patch"
+        versionName = "2.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -55,6 +55,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":update"))
 
     // Firebase
     implementation(platform(libs.firebase.bom))

@@ -46,7 +46,7 @@
         </provider>
 
         <receiver
-            android:name=".service.system.InstallResultReceiver"
+            android:name=".data.receiver.InstallResultReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="${applicationId}.UPDATE_INSTALL_RESULT" />

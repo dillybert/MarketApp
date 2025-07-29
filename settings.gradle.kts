@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Market"
 include(":app")
+include(":update")
